@@ -236,3 +236,99 @@ UNLOCK TABLES;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2026-11-22 17:01:45
+USE esports_tournament;
+
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE participation_applications;
+TRUNCATE TABLE team_members;
+TRUNCATE TABLE players;
+TRUNCATE TABLE teams;
+TRUNCATE TABLE tournaments;
+TRUNCATE TABLE users;
+TRUNCATE TABLE game_titles;
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- =================================================================
+-- 1. BẢNG GAME_TITLES (5 tựa game)
+-- =================================================================
+INSERT INTO game_titles (game_id, game_name, publisher) VALUES
+(1, 'Liên Minh Huyền Thoại', 'Riot Games'),
+(2, 'VALORANT', 'Riot Games'),
+(3, 'Đấu Trường Chân Lý (TFT)', 'Riot Games'),
+(4, 'Counter-Strike 2', 'Valve'),
+(5, 'Dota 2', 'Valve');
+
+-- =================================================================
+-- 2. BẢNG USERS (Đầy đủ vai trò; mật khẩu mặc định của tất cả là: 123456)
+-- =================================================================
+INSERT INTO users (user_id, full_name, email, password_hash, phone, role, account_status) VALUES
+(1,  'Phan Thế Bảo',       'admin@esports.vn',       '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '0901000001', 'ADMIN',                'ACTIVE'),
+(2,  'Lê Quốc Bảo',        'organizer@esports.vn',   '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '0901000002', 'ORGANIZER',            'ACTIVE'),
+(3,  'Nguyễn Đức Trung',   'coordinator@esports.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '0901000003', 'REGIONAL_COORDINATOR', 'ACTIVE'),
+(4,  'Trần Minh Trọng',    'referee1@esports.vn',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '0901000004', 'REFEREE',              'ACTIVE'),
+(5,  'Lee Sang-hyeok',     'captain.t1@esports.vn',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '0901000005', 'TEAM_CAPTAIN',         'ACTIVE'),
+(6,  'Chen Ze-bin',        'captain.blg@esports.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '0901000006', 'TEAM_CAPTAIN',         'ACTIVE'),
+(7,  'Li Yuan-hao',        'captain.wbg@esports.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '0901000007', 'TEAM_CAPTAIN',         'ACTIVE'),
+(8,  'Simon Hofverberg',   'captain.los@esports.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '0901000008', 'TEAM_CAPTAIN',         'ACTIVE'),
+(9,  'Đỗ Duy Khánh',       'captain.gam@esports.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '0901000009', 'TEAM_CAPTAIN',         'ACTIVE'),
+(10, 'Trần Thảo Vy',       'viewer@esports.vn',      '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '0901000010', 'VIEWER',               'ACTIVE');
+
+-- =================================================================
+-- 3. BẢNG TOURNAMENTS (5 giải đấu mẫu)
+-- =================================================================
+INSERT INTO tournaments (tournament_id, game_id, organizer_id, tournament_name, start_date, end_date, max_teams, tournament_status) VALUES
+(1, 1, 2, 'CHUNG KẾT THẾ GIỚI LMHT 2026', '2026-10-01', '2026-11-05', 50, 'ONGOING'),
+(2, 1, 2, 'MID-SEASON INVITATIONAL 2026', '2026-05-01', '2026-05-19', 12, 'COMPLETED'),
+(3, 1, 2, 'LCK MÙA HÈ 2026',              '2026-06-12', '2026-08-25', 10, 'COMPLETED'),
+(4, 2, 2, 'VALORANT CHAMPIONS 2026',      '2026-08-01', '2026-08-24', 16, 'COMPLETED'),
+(5, 1, 2, 'KESPA CUP MÙA ĐÔNG 2026',      '2026-12-01', '2026-12-15', 16, 'DRAFT');
+
+-- =================================================================
+-- 4. BẢNG TEAMS (5 đội tuyển: T1, BLG, WBG, LOS, GAM)
+-- =================================================================
+INSERT INTO teams (team_id, captain_user_id, team_name, team_tag, country) VALUES
+(1, 5, 'T1',              'T1',  'LCK'),
+(2, 6, 'Bilibili Gaming', 'BLG', 'LPL'),
+(3, 7, 'Weibo Gaming',    'WBG', 'LPL'),
+(4, 8, 'Los Ratones',     'LOS', 'LEC'),
+(5, 9, 'GAM Esports',     'GAM', 'VCS');
+
+-- =================================================================
+-- 5. BẢNG PLAYERS (10 tuyển thủ: đủ đội hình T1 + đại diện 4 đội còn lại)
+-- =================================================================
+INSERT INTO players (player_id, player_name, in_game_name, game_account_id) VALUES
+(1,  'Choi Woo-je',      'Zeus',       'KR_ZEUS_001'),
+(2,  'Mun Hyeon-jun',    'Oner',       'KR_ONER_002'),
+(3,  'Lee Sang-hyeok',   'Faker',      'KR_FAKER_003'),
+(4,  'Lee Min-hyeong',   'Gumayusi',   'KR_GUMA_004'),
+(5,  'Ryu Min-seok',     'Keria',      'KR_KERIA_005'),
+(6,  'Chen Ze-bin',      'Bin',        'CN_BIN_006'),
+(7,  'Zhuo Ding',        'Knight',     'CN_KNIGHT_007'),
+(8,  'Li Yuan-hao',      'Xiaohu',     'CN_XIAOHU_008'),
+(9,  'Simon Hofverberg', 'Thebausffs', 'EU_BAUS_009'),
+(10, 'Đỗ Duy Khánh',     'Levi',       'VN_LEVI_010');
+
+-- =================================================================
+-- 6. BẢNG TEAM_MEMBERS (Liên kết đội tuyển và tuyển thủ)
+-- =================================================================
+INSERT INTO team_members (team_id, player_id, member_role, joined_at) VALUES
+(1, 1,  'MAIN',    '2025-01-10 08:00:00'),
+(1, 2,  'MAIN',    '2025-01-10 08:00:00'),
+(1, 3,  'CAPTAIN', '2025-01-10 08:00:00'),
+(1, 4,  'MAIN',    '2025-01-10 08:00:00'),
+(1, 5,  'MAIN',    '2025-01-10 08:00:00'),
+(2, 6,  'CAPTAIN', '2025-02-01 08:00:00'),
+(2, 7,  'MAIN',    '2025-02-01 08:00:00'),
+(3, 8,  'CAPTAIN', '2025-02-15 08:00:00'),
+(4, 9,  'CAPTAIN', '2025-03-01 08:00:00'),
+(5, 10, 'CAPTAIN', '2025-01-20 08:00:00');
+
+-- =================================================================
+-- 7. BẢNG PARTICIPATION_APPLICATIONS (5 đơn đăng ký tham dự giải)
+-- =================================================================
+INSERT INTO participation_applications (application_id, tournament_id, team_id, application_status, submitted_at, reviewed_by, reviewed_at, note) VALUES
+(1, 1, 1, 'APPROVED', '2026-09-05 10:00:00', 2,    '2026-09-06 09:30:00', 'Hạt giống số 1 khu vực LCK - Đủ điều kiện thi đấu'),
+(2, 1, 2, 'APPROVED', '2026-09-05 11:15:00', 2,    '2026-09-06 09:35:00', 'Hạt giống số 1 khu vực LPL - Đã xác nhận đội hình'),
+(3, 1, 3, 'APPROVED', '2026-09-07 14:20:00', 2,    '2026-09-08 10:00:00', 'Đủ điều kiện tham dự Vòng Thụy Sĩ'),
+(4, 1, 4, 'APPROVED', '2026-09-10 16:45:00', 2,    '2026-09-11 11:00:00', 'Vượt qua Vòng Khởi Động'),
+(5, 5, 5, 'PENDING',  '2026-11-15 09:00:00', NULL, NULL,                  'Đang chờ Ban tổ chức kiểm tra danh sách tuyển thủ');
