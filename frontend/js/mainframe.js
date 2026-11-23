@@ -18,9 +18,9 @@ const PAGE_CONFIG = {
     breadcrumb: "Đội tuyển"
   },
   schedules: {
-    eyebrow: "LỊCH THI ĐẤU",
-    title: "Vòng đấu & Lịch thi đấu",
-    subtitle: "Sắp xếp cặp đấu, thời gian và địa điểm thi đấu.",
+    eyebrow: "ĐIỀU PHỐI TRẬN ĐẤU",
+    title: "Lịch thi đấu",
+    subtitle: "Lên lịch và theo dõi trận đấu theo ngày. Quản lý danh sách và lịch tuần.",
     breadcrumb: "Lịch thi đấu"
   },
   results: {
@@ -47,6 +47,30 @@ function closeModal(modalId) {
   if (modal) modal.style.display = "none";
 }
 
+
+// Bảo đảm trang Lịch thi đấu luôn nạp đúng stylesheet mới, tránh trình duyệt
+// tiếp tục sử dụng CSS cũ từ bộ nhớ đệm hoặc thiếu liên kết CSS trong index.html.
+function ensureSchedulePageStyles() {
+  const versionedCss = new URL("./css/schedules.css?v=20261123-week-view-02", document.baseURI).href;
+  let stylesheet = document.getElementById("schedulePageStyles");
+
+  if (!stylesheet) {
+    stylesheet = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).find((link) =>
+      link.href && new URL(link.href, document.baseURI).pathname.endsWith("/css/schedules.css")
+    );
+  }
+
+  if (!stylesheet) {
+    stylesheet = document.createElement("link");
+    stylesheet.rel = "stylesheet";
+    stylesheet.id = "schedulePageStyles";
+    document.head.appendChild(stylesheet);
+  }
+
+  stylesheet.id = "schedulePageStyles";
+  if (stylesheet.href !== versionedCss) stylesheet.href = versionedCss;
+}
+
 async function loadPage(pageName) {
   const pageBody = document.getElementById("pageBody");
   if (!pageBody) return;
@@ -71,6 +95,9 @@ async function loadPage(pageName) {
   }
 
   // 3. Nạp file HTML từ thư mục pages/ vào #pageBody
+  // Trang lịch có stylesheet riêng; gọi lại ở mỗi lần điều hướng để tránh cache cũ.
+  if (pageName === "schedules") ensureSchedulePageStyles();
+
   try {
     const response = await fetch(`pages/${pageName}.html`);
     if (!response.ok) throw new Error(`Chưa có tệp pages/${pageName}.html`);

@@ -1,9 +1,9 @@
 package com.esports.controller;
 
 import com.esports.dto.RoundRequestDTO;
+import com.esports.dto.RoundResponseDTO;
 import com.esports.entity.Round;
 import com.esports.service.RoundService;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,68 +15,55 @@ import java.util.List;
 @RequestMapping("/api/rounds")
 @RequiredArgsConstructor
 public class RoundController {
-
     private final RoundService roundService;
 
-    // Lấy tất cả Round
     @GetMapping
-    public ResponseEntity<List<Round>> getAllRounds() {
-        return ResponseEntity.ok(roundService.getAllRounds());
+    public ResponseEntity<List<RoundResponseDTO>> getAllRounds() {
+        return ResponseEntity.ok(roundService.getAllRounds().stream().map(RoundResponseDTO::from).toList());
     }
 
-
-    // Lấy Round theo ID
     @GetMapping("/{roundId}")
-    public ResponseEntity<Round> getRoundById(@PathVariable Long roundId) {
-        return ResponseEntity.ok(roundService.getRoundById(roundId));
+    public ResponseEntity<RoundResponseDTO> getRoundById(@PathVariable Long roundId) {
+        return ResponseEntity.ok(RoundResponseDTO.from(roundService.getRoundById(roundId)));
     }
 
-
-    // Lấy Round thuộc một Stage
     @GetMapping("/stage/{stageId}")
-    public ResponseEntity<List<Round>> getRoundsByStage(@PathVariable Long stageId) {
-        return ResponseEntity.ok(roundService.getRoundsByStage(stageId));
+    public ResponseEntity<List<RoundResponseDTO>> getRoundsByStage(@PathVariable Long stageId) {
+        return ResponseEntity.ok(roundService.getRoundsByStage(stageId)
+                .stream().map(RoundResponseDTO::from).toList());
     }
 
-
-    // Lấy Round thuộc một Stage theo thứ tự
     @GetMapping("/stage/{stageId}/ordered")
-    public ResponseEntity<List<Round>> getRoundsByStageOrdered(@PathVariable Long stageId) {
-        return ResponseEntity.ok(roundService.getRoundsByStageOrdered(stageId));
+    public ResponseEntity<List<RoundResponseDTO>> getRoundsByStageOrdered(@PathVariable Long stageId) {
+        return ResponseEntity.ok(roundService.getRoundsByStageOrdered(stageId)
+                .stream().map(RoundResponseDTO::from).toList());
     }
 
-
-    // Tìm Round theo Stage ID và Round Number
     @GetMapping("/stage/{stageId}/number/{roundNumber}")
-    public ResponseEntity<Round> getRoundByStageAndNumber(@PathVariable Long stageId, @PathVariable Integer roundNumber) {
-        return ResponseEntity.ok(roundService.getRoundByStageAndNumber(stageId, roundNumber));
+    public ResponseEntity<RoundResponseDTO> getRoundByStageAndNumber(@PathVariable Long stageId,
+                                                                     @PathVariable Integer roundNumber) {
+        return ResponseEntity.ok(RoundResponseDTO.from(
+                roundService.getRoundByStageAndNumber(stageId, roundNumber)));
     }
 
-
-    // Lấy Round theo trạng thái
     @GetMapping("/status/{roundStatus}")
-    public ResponseEntity<List<Round>> getRoundsByStatus(@PathVariable Integer roundStatus) {
-        return ResponseEntity.ok(roundService.getRoundsByStatus(roundStatus));
+    public ResponseEntity<List<RoundResponseDTO>> getRoundsByStatus(@PathVariable String roundStatus) {
+        return ResponseEntity.ok(roundService.getRoundsByStatus(roundStatus)
+                .stream().map(RoundResponseDTO::from).toList());
     }
 
-
-    // Tạo Round mới
     @PostMapping
-    public ResponseEntity<Round> createRound(@RequestBody RoundRequestDTO request) {
+    public ResponseEntity<RoundResponseDTO> createRound(@RequestBody RoundRequestDTO request) {
         Round createdRound = roundService.createRound(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdRound);
+        return ResponseEntity.status(HttpStatus.CREATED).body(RoundResponseDTO.from(createdRound));
     }
 
-
-    // Cập nhật Round
     @PutMapping("/{roundId}")
-    public ResponseEntity<Round> updateRound(@PathVariable Long roundId, @RequestBody RoundRequestDTO request) {
-        Round updatedRound = roundService.updateRound(roundId, request);
-        return ResponseEntity.ok(updatedRound);
+    public ResponseEntity<RoundResponseDTO> updateRound(@PathVariable Long roundId,
+                                                        @RequestBody RoundRequestDTO request) {
+        return ResponseEntity.ok(RoundResponseDTO.from(roundService.updateRound(roundId, request)));
     }
 
-
-    // Xóa Round
     @DeleteMapping("/{roundId}")
     public ResponseEntity<Void> deleteRound(@PathVariable Long roundId) {
         roundService.deleteRound(roundId);

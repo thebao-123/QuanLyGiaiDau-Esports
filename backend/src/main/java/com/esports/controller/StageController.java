@@ -1,9 +1,9 @@
 package com.esports.controller;
 
 import com.esports.dto.StageRequestDTO;
+import com.esports.dto.StageResponseDTO;
 import com.esports.entity.Stage;
 import com.esports.service.StageService;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,62 +14,49 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/stages")
 @RequiredArgsConstructor
-public class StageController
-{
+public class StageController {
     private final StageService stageService;
 
-    // Lấy tất cả Stage
     @GetMapping
-    public ResponseEntity<List<Stage>> getAllStages() {
-        return ResponseEntity.ok(stageService.getAllStages());
+    public ResponseEntity<List<StageResponseDTO>> getAllStages() {
+        return ResponseEntity.ok(stageService.getAllStages().stream().map(StageResponseDTO::from).toList());
     }
 
-
-    // Lấy Stage theo ID
     @GetMapping("/{stageId}")
-    public ResponseEntity<Stage> getStageById(@PathVariable Long stageId) {
-        return ResponseEntity.ok(stageService.getStageById(stageId));
+    public ResponseEntity<StageResponseDTO> getStageById(@PathVariable Long stageId) {
+        return ResponseEntity.ok(StageResponseDTO.from(stageService.getStageById(stageId)));
     }
 
-
-    // Lấy danh sách Stage thuộc một Tournament
     @GetMapping("/tournament/{tournamentId}")
-    public ResponseEntity<List<Stage>> getStagesByTournament(@PathVariable Long tournamentId) {
-        return ResponseEntity.ok(stageService.getStagesByTournament(tournamentId));
+    public ResponseEntity<List<StageResponseDTO>> getStagesByTournament(@PathVariable Long tournamentId) {
+        return ResponseEntity.ok(stageService.getStagesByTournament(tournamentId)
+                .stream().map(StageResponseDTO::from).toList());
     }
 
-
-    // Lấy Stage theo loại
     @GetMapping("/type/{stageType}")
-    public ResponseEntity<List<Stage>> getStagesByType(@PathVariable String stageType) {
-        return ResponseEntity.ok(stageService.getStagesByType(stageType));
+    public ResponseEntity<List<StageResponseDTO>> getStagesByType(@PathVariable String stageType) {
+        return ResponseEntity.ok(stageService.getStagesByType(stageType)
+                .stream().map(StageResponseDTO::from).toList());
     }
 
-
-    // Lấy Stage theo trạng thái
     @GetMapping("/status/{stageStatus}")
-    public ResponseEntity<List<Stage>> getStagesByStatus(@PathVariable String stageStatus) {
-        return ResponseEntity.ok(stageService.getStagesByStatus(stageStatus));
+    public ResponseEntity<List<StageResponseDTO>> getStagesByStatus(@PathVariable String stageStatus) {
+        return ResponseEntity.ok(stageService.getStagesByStatus(stageStatus)
+                .stream().map(StageResponseDTO::from).toList());
     }
 
-
-    // Tạo Stage mới
     @PostMapping
-    public ResponseEntity<Stage> createStage(@RequestBody StageRequestDTO request) {
+    public ResponseEntity<StageResponseDTO> createStage(@RequestBody StageRequestDTO request) {
         Stage createdStage = stageService.createStage(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdStage);
+        return ResponseEntity.status(HttpStatus.CREATED).body(StageResponseDTO.from(createdStage));
     }
 
-
-    // Cập nhật Stage
     @PutMapping("/{stageId}")
-    public ResponseEntity<Stage> updateStage(@PathVariable Long stageId, @RequestBody StageRequestDTO request) {
-        Stage updatedStage = stageService.updateStage(stageId, request);
-        return ResponseEntity.ok(updatedStage);
+    public ResponseEntity<StageResponseDTO> updateStage(@PathVariable Long stageId,
+                                                        @RequestBody StageRequestDTO request) {
+        return ResponseEntity.ok(StageResponseDTO.from(stageService.updateStage(stageId, request)));
     }
 
-
-    // Xóa Stage
     @DeleteMapping("/{stageId}")
     public ResponseEntity<Void> deleteStage(@PathVariable Long stageId) {
         stageService.deleteStage(stageId);
