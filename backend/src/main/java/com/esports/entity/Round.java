@@ -30,5 +30,5 @@ public class Round
     private LocalDateTime scheduledStart;
 
     @Column(name = "round_status", nullable = false, length = 20)
-    private Integer roundStatus;
+    private String roundStatus;
 }

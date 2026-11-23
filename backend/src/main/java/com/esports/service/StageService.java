@@ -12,13 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Set;
 
 @Service
 @Transactional(readOnly = true)
 public class StageService
 {
-
     private final StageRepository stageRepo;
     private final TournamentRepository tournamentRepo;
 
@@ -136,9 +134,13 @@ public class StageService
         if (request == null)
             throw new IllegalArgumentException("Giai đoạn không thể là null");
 
+        if (request.getTournamentId() == null)
+            throw new IllegalArgumentException("ID Giải đấu không được để trống");
+
         if (request.getStageName() == null || request.getStageName().isBlank())
             throw new IllegalArgumentException("Tên Giai đoạn không được để trống");
 
+        request.setStageName(request.getStageName().trim());
         if (request.getStageName().length() > 100)
             throw new IllegalArgumentException("Tên Giai đoạn không được vượt quá 100 ký tự");
 

@@ -10,5 +10,5 @@ public class RoundRequestDTO
     private Integer roundNumber;
     private String roundName;
     private LocalDateTime scheduledStart;
-    private Integer roundStatus;
+    private String roundStatus;
 }
