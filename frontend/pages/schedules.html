@@ -1,0 +1,49 @@
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Lịch thi đấu</h3>
+    <div class="toolbar">
+      <select id="filter-match-status" class="form-select" style="width:200px;">
+        <option value="ALL">Tất cả trạng thái</option>
+        <option value="SCHEDULED">Đã lên lịch</option>
+        <option value="READY">Sẵn sàng</option>
+        <option value="IN_PROGRESS">Đang diễn ra</option>
+        <option value="PENDING_CONFIRMATION">Chờ xác nhận</option>
+        <option value="COMPLETED">Hoàn thành</option>
+      </select>
+      <button id="btn-open-match-modal" class="btn btn-primary">+ Tạo trận đấu</button>
+    </div>
+  </div>
+  <div id="match-error" style="display:none;color:#dc2626;padding:8px 16px;"></div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Mã trận</th><th>Vòng</th><th>Cặp đấu</th><th>Thời gian</th><th>Địa điểm</th>
+          <th>Thể thức</th><th>Trạng thái</th><th>Trọng tài</th><th>Thao tác</th>
+        </tr>
+      </thead>
+      <tbody id="matches-table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="match-modal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); align-items:center; justify-content:center; z-index:999;">
+  <div class="card" style="width:100%; max-width:480px; margin:0 16px;">
+    <div class="card-header">
+      <h3 class="card-title" id="match-modal-title">Tạo trận đấu</h3>
+      <button type="button" id="btn-close-match-modal" class="btn btn-outline btn-sm">✕</button>
+    </div>
+    <form id="form-match" style="padding:16px;display:grid;gap:10px;">
+      <input class="form-input" id="inp-match-code" placeholder="Mã trận (VD: M-001)" required />
+      <input class="form-input" id="inp-match-round" type="number" placeholder="ID vòng đấu" required />
+      <input class="form-input" id="inp-match-team1" type="number" placeholder="ID đội 1" required />
+      <input class="form-input" id="inp-match-team2" type="number" placeholder="ID đội 2" required />
+      <input class="form-input" id="inp-match-time" type="datetime-local" />
+      <input class="form-input" id="inp-match-venue" placeholder="Địa điểm" />
+      <select class="form-select" id="inp-match-bo">
+        <option value="1">BO1</option><option value="3" selected>BO3</option><option value="5">BO5</option>
+      </select>
+      <button type="submit" class="btn btn-primary">Lưu</button>
+    </form>
+  </div>
+</div>

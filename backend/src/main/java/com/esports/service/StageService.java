@@ -145,12 +145,8 @@ public class StageService
             throw new IllegalArgumentException("Tên Giai đoạn không được vượt quá 100 ký tự");
 
         if (request.getStageType() == null
-                || !"QUALIFIER".contains(request.getStageType())
-                || !"PLAY_IN".contains(request.getStageType())
-                || !"SWISS_STAGE".contains(request.getStageType())
-                || !"GROUP_STAGE".contains(request.getStageType())
-                || !"LEAGUE_STAGE".contains(request.getStageType())
-                || !"PLAYOFF".contains(request.getStageType()))
+                || !java.util.Set.of("QUALIFIER", "PLAY_IN", "SWISS_STAGE", "GROUP_STAGE", "LEAGUE_STAGE", "PLAYOFF")
+                        .contains(request.getStageType()))
             throw new IllegalArgumentException("Thể loại Giai đoạn không hợp lệ");
 
         if (request.getStageOrder() == null || request.getStageOrder() <= 0)
