@@ -31,9 +31,10 @@ function showError(id, msg) {
   el.style.display = msg ? "block" : "none";
 }
 
+// Trả về true nếu thành công, false nếu có lỗi (lỗi được hiển thị ở ô báo lỗi).
 async function runAction(errId, fn, reload) {
-  try { showError(errId, ""); await fn(); await reload(); }
-  catch (e) { showError(errId, e.message); }
+  try { showError(errId, ""); await fn(); await reload(); return true; }
+  catch (e) { showError(errId, e.message); return false; }
 }
 
 // ===== Lịch thi đấu =====
@@ -112,7 +113,7 @@ async function initSchedulesPage() {
     const id = editingId;
     runAction("match-error",
       () => id ? matchApi(`/matches/${id}`, "PUT", body) : matchApi("/matches", "POST", body), load)
-      .then(closeModal);
+      .then((ok) => { if (ok) closeModal(); });
   };
 
   await runAction("match-error", async () => {}, load);
