@@ -1,0 +1,44 @@
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Tổng số giải đấu</div>
+    <div class="kpi-value" id="kpi-total-tournaments">0</div>
+    <div class="kpi-sub">Hệ thống giải Esports 2026</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Đang diễn ra</div>
+    <div class="kpi-value" id="kpi-ongoing-tournaments">0</div>
+    <div class="kpi-sub">Giải đấu đang thi đấu</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Đội tuyển tham gia</div>
+    <div class="kpi-value" id="kpi-total-teams">0</div>
+    <div class="kpi-sub">Đã xác nhận hồ sơ</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Trận đấu ghi nhận</div>
+    <div class="kpi-value" id="kpi-total-matches">0</div>
+    <div class="kpi-sub">Đồng bộ lịch & kết quả</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Danh sách giải đấu nổi bật</h3>
+    <button class="btn btn-primary btn-sm" onclick="loadPage('tournaments')">Quản lý giải đấu →</button>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Mã</th>
+          <th>Tên giải đấu</th>
+          <th>Bộ môn</th>
+          <th>Thời gian</th>
+          <th>Số đội tối đa</th>
+          <th>Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody id="dashboard-tournaments-body"></tbody>
+    </table>
+  </div>
+</div>
