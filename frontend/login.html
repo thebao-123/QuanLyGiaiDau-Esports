@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đăng nhập – Esports Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/components.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0f172a 0%, #172554 100%);
+      padding: 20px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+    }
+    .login-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .login-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #172554;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .login-title { font-size: 20px; font-weight: 700; color: #0f172a; }
+    .login-sub { font-size: 13px; color: #64748b; margin-top: 2px; }
+    .error-box {
+      display: none;
+      background: #fee2e2;
+      color: #b91c1c;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+    .demo-accounts {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .demo-label { font-size: 12px; color: #64748b; margin-bottom: 8px; font-weight: 600; }
+    .demo-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .demo-chip {
+      padding: 5px 10px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      color: #334155;
+      cursor: pointer;
+    }
+    .demo-chip:hover { background: #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-logo">🏆</div>
+      <div>
+        <div class="login-title">ESPORTS MANAGER</div>
+        <div class="login-sub">Đăng nhập hệ thống quản lý giải đấu</div>
+      </div>
+    </div>
+
+    <div id="login-error" class="error-box"></div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label class="form-label">Email tài khoản *</label>
+        <input type="email" id="login-email" class="form-input" required placeholder="admin@esports.vn" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mật khẩu *</label>
+        <input type="password" id="login-password" class="form-input" required placeholder="••••••" />
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%; padding:11px; margin-top:6px;">
+        Đăng nhập
+      </button>
+    </form>
+
+    <div class="demo-accounts">
+      <div class="demo-label">Điền nhanh tài khoản mẫu (Mật khẩu: 123456):</div>
+      <div class="demo-chips">
+        <button type="button" class="demo-chip" onclick="fillDemo('admin@esports.vn')">Admin</button>
+        <button type="button" class="demo-chip" onclick="fillDemo('organizer@esports.vn')">Ban tổ chức</button>
+        <button type="button" class="demo-chip" onclick="fillDemo('referee1@esports.vn')">Trọng tài</button>
+        <button type="button" class="demo-chip" onclick="fillDemo('captain.t1@esports.vn')">Đội trưởng T1</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/mock-data.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    const SAMPLE_ACCOUNTS = {
+      "admin@esports.vn": { userId: 1, fullName: "Phan Thế Bảo", role: "ADMIN" },
+      "organizer@esports.vn": { userId: 2, fullName: "Lê Quốc Bảo", role: "ORGANIZER" },
+      "coordinator@esports.vn": { userId: 3, fullName: "Nguyễn Đức Trung", role: "REGIONAL_COORDINATOR" },
+      "referee1@esports.vn": { userId: 4, fullName: "Trần Minh Trọng", role: "REFEREE" },
+      "captain.t1@esports.vn": { userId: 5, fullName: "Lee Sang-hyeok", role: "TEAM_CAPTAIN" },
+      "viewer@esports.vn": { userId: 10, fullName: "Trần Thảo Vy", role: "VIEWER" }
+    };
+
+    function fillDemo(email) {
+      document.getElementById("login-email").value = email;
+      document.getElementById("login-password").value = "123456";
+    }
+
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("login-email").value.trim().toLowerCase();
+      const password = document.getElementById("login-password").value;
+      const errBox = document.getElementById("login-error");
+
+      if (!email || !password) {
+        errBox.textContent = "Vui lòng nhập đầy đủ email và mật khẩu.";
+        errBox.style.display = "block";
+        return;
+      }
+
+      const res = await ApiService.login(email, password);
+      const matched = SAMPLE_ACCOUNTS[email];
+      const currentUser = {
+        userId: res.userId || matched?.userId || 99,
+        email,
+        fullName: matched ? matched.fullName : (res.fullName || email.split("@")[0]),
+        role: matched ? matched.role : (res.role || "VIEWER"),
+        token: res.token || "mock-jwt-token"
+      };
+
+      localStorage.setItem("currentUser", JSON.stringify(currentUser));
+      window.location.href = "index.html";
+    });
+  </script>
+</body>
+</html>

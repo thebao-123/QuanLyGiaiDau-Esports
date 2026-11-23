@@ -1,394 +1,282 @@
-const API = 'http://localhost:8080/api';
-let currentTeamId = null;
-let currentTournamentId = null;
+const GAME_MAP = {
+  1: "Liên Minh Huyền Thoại",
+  2: "VALORANT",
+  3: "Đấu Trường Chân Lý (TFT)",
+  4: "Counter-Strike 2",
+  5: "Dota 2"
+};
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadAllData();
-});
+const ROLE_LABELS = {
+  ADMIN: "Quản trị viên",
+  ORGANIZER: "Ban tổ chức",
+  REGIONAL_COORDINATOR: "Điều phối khu vực",
+  REFEREE: "Trọng tài",
+  TEAM_CAPTAIN: "Đội trưởng",
+  VIEWER: "Khán giả"
+};
 
-async function loadAllData() {
-  await Promise.all([loadGames(), loadTournaments(), loadTeams(), loadUsers()]);
+function normalizeTournament(t) {
+  return {
+    id: t.tournamentId ?? t.tournament_id ?? t.id ?? "",
+    name: t.tournamentName ?? t.tournament_name ?? t.name ?? t.title ?? "Chưa đặt tên",
+    game: t.gameName ?? t.game ?? GAME_MAP[t.gameId ?? t.game_id] ?? "Liên Minh Huyền Thoại",
+    startDate: t.startDate ?? t.start_date ?? t.date ?? "",
+    endDate: t.endDate ?? t.end_date ?? "",
+    maxTeams: t.maxTeams ?? t.max_teams ?? t.teams ?? t.teamCount ?? 16,
+    status: (t.tournamentStatus ?? t.tournament_status ?? t.status ?? "DRAFT").toUpperCase()
+  };
 }
 
-function showToast(msg, isError = false) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = isError ? 'toast error' : 'toast';
-  setTimeout(() => el.classList.add('hidden'), 3500);
-}
-
-async function apiFetch(url, options = {}) {
-  const res = await fetch(API + url, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options
-  });
-  if (!res.ok) {
-    let errMsg = 'Lỗi xử lý từ máy chủ';
-    try {
-      const data = await res.json();
-      if (data.error) errMsg = data.error;
-    } catch (_) {}
-    throw new Error(errMsg);
+function normalizeStatusCategory(status) {
+  const s = (status || "").toUpperCase();
+  if (s === "ONGOING" || s === "IN_PROGRESS" || s === "ACTIVE" || s.includes("DIỄN RA")) {
+    return "ONGOING";
   }
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
+  if (s === "COMPLETED" || s === "FINISHED" || s === "DONE" || s.includes("KẾT THÚC")) {
+    return "COMPLETED";
+  }
+  return "DRAFT";
 }
 
-function switchTab(tab) {
-  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
+function renderTournamentStatusBadge(status) {
+  const cat = normalizeStatusCategory(status);
+  if (cat === "ONGOING") {
+    return `<span class="badge badge-live">● Đang diễn ra</span>`;
+  }
+  if (cat === "COMPLETED") {
+    return `<span class="badge badge-done">Đã kết thúc</span>`;
+  }
+  return `<span class="badge badge-upcoming">Sắp diễn ra</span>`;
 }
 
-function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+function normalizeUser(u) {
+  return {
+    id: u.userId ?? u.user_id ?? u.id ?? "",
+    fullName: u.fullName ?? u.full_name ?? u.name ?? "Chưa cập nhật",
+    email: u.email ?? "",
+    phone: u.phone ?? "—",
+    role: (u.role ?? "VIEWER").toUpperCase(),
+    status: (u.accountStatus ?? u.account_status ?? "ACTIVE").toUpperCase()
+  };
+}
 
-// ================= 1. TỰA GAME =================
-async function loadGames() {
-  try {
-    const games = await apiFetch('/games');
-    document.getElementById('tbody-games').innerHTML = games.map(g => `
-      <tr>
-        <td>#${g.gameId}</td>
-        <td><strong>${g.gameName}</strong></td>
-        <td>${g.publisher || '-'}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteGame(${g.gameId})">Xóa</button></td>
-      </tr>
-    `).join('');
+// ===== 1. KHỞI TẠO TRANG TỔNG QUAN =====
+async function initDashboardPage() {
+  const [rawTournaments, teams, matches] = await Promise.all([
+    ApiService.getTournaments(),
+    ApiService.getTeams(),
+    ApiService.getMatches()
+  ]);
 
-    const select = document.getElementById('t-game');
-    if (select) {
-      select.innerHTML = games.map(g => `<option value="${g.gameId}">${g.gameName}</option>`).join('');
+  const tournaments = rawTournaments.map(normalizeTournament);
+  const ongoingCount = tournaments.filter((t) => normalizeStatusCategory(t.status) === "ONGOING").length;
+
+  document.getElementById("kpi-total-tournaments").textContent = tournaments.length;
+  document.getElementById("kpi-ongoing-tournaments").textContent = ongoingCount;
+  document.getElementById("kpi-total-teams").textContent = teams.length;
+  document.getElementById("kpi-total-matches").textContent = matches.length;
+
+  const tbody = document.getElementById("dashboard-tournaments-body");
+  tbody.innerHTML = tournaments
+    .map((t) => {
+      const timeText = t.endDate ? `${t.startDate} → ${t.endDate}` : (t.startDate || "Đang cập nhật");
+      return `
+        <tr>
+          <td>#${t.id}</td>
+          <td style="font-weight:600;">${t.name}</td>
+          <td>${t.game}</td>
+          <td>${timeText}</td>
+          <td>${t.maxTeams} đội</td>
+          <td>${renderTournamentStatusBadge(t.status)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+// ===== 2. KHỞI TẠO TRANG QUẢN LÝ GIẢI ĐẤU =====
+async function initTournamentsPage() {
+  const rawTournaments = await ApiService.getTournaments();
+  let allTournaments = rawTournaments.map(normalizeTournament);
+
+  const tbody = document.getElementById("tournaments-table-body");
+  const searchInput = document.getElementById("search-tournament");
+  const statusSelect = document.getElementById("filter-tournament-status");
+  const modal = document.getElementById("tournament-modal");
+
+  function renderTable() {
+    const keyword = (searchInput.value || "").toLowerCase().trim();
+    const filterSt = statusSelect.value;
+
+    const filtered = allTournaments.filter((t) => {
+      const matchName = t.name.toLowerCase().includes(keyword);
+      const matchStatus = filterSt === "ALL" || normalizeStatusCategory(t.status) === filterSt;
+      return matchName && matchStatus;
+    });
+
+    tbody.innerHTML = filtered
+      .map(
+        (t) => `
+          <tr>
+            <td>#${t.id}</td>
+            <td style="font-weight:600;">${t.name}</td>
+            <td>${t.game}</td>
+            <td>${t.startDate || "—"}</td>
+            <td>${t.endDate || "—"}</td>
+            <td>${t.maxTeams}</td>
+            <td>${renderTournamentStatusBadge(t.status)}</td>
+          </tr>
+        `
+      )
+      .join("");
+  }
+
+  renderTable();
+  searchInput.addEventListener("input", renderTable);
+  statusSelect.addEventListener("change", renderTable);
+
+  const closeModal = () => (modal.style.display = "none");
+  document.getElementById("btn-open-tournament-modal").onclick = () => (modal.style.display = "flex");
+  document.getElementById("btn-close-tournament-modal").onclick = closeModal;
+  document.getElementById("btn-cancel-tournament-modal").onclick = closeModal;
+
+  document.getElementById("form-create-tournament").onsubmit = async (e) => {
+    e.preventDefault();
+    const gameId = Number(document.getElementById("inp-tournament-game").value);
+    const payload = {
+      gameId,
+      gameName: GAME_MAP[gameId],
+      organizerId: 2,
+      tournamentName: document.getElementById("inp-tournament-name").value.trim(),
+      startDate: document.getElementById("inp-start-date").value,
+      endDate: document.getElementById("inp-end-date").value,
+      maxTeams: Number(document.getElementById("inp-max-teams").value) || 16,
+      tournamentStatus: "DRAFT"
+    };
+
+    const created = await ApiService.createTournament(payload);
+    allTournaments.unshift(normalizeTournament(created));
+    renderTable();
+    e.target.reset();
+    closeModal();
+  };
+}
+
+// ===== 3. KHỞI TẠO TRANG QUẢN LÝ TÀI KHOẢN =====
+async function initAccountsPage() {
+  const rawUsers = await ApiService.getUsers();
+  let allUsers = rawUsers.map(normalizeUser);
+
+  const tbody = document.getElementById("accounts-table-body");
+  const searchInput = document.getElementById("search-user");
+  const roleSelect = document.getElementById("filter-user-role");
+  const modal = document.getElementById("user-modal");
+
+  function updateUserKpis() {
+    const activeCount = allUsers.filter((u) => u.status === "ACTIVE").length;
+    const suspendedCount = allUsers.filter((u) => u.status === "SUSPENDED").length;
+    const staffCount = allUsers.filter((u) =>
+      ["ADMIN", "ORGANIZER", "REGIONAL_COORDINATOR", "REFEREE"].includes(u.role)
+    ).length;
+
+    document.getElementById("kpi-total-users").textContent = allUsers.length;
+    document.getElementById("kpi-active-users").textContent = activeCount;
+    document.getElementById("kpi-staff-users").textContent = staffCount;
+    document.getElementById("kpi-suspended-users").textContent = suspendedCount;
+  }
+
+  function renderUsersTable() {
+    updateUserKpis();
+    const keyword = (searchInput.value || "").toLowerCase().trim();
+    const filterRole = roleSelect.value;
+
+    const filtered = allUsers.filter((u) => {
+      const matchText =
+        u.fullName.toLowerCase().includes(keyword) || u.email.toLowerCase().includes(keyword);
+      const matchRole = filterRole === "ALL" || u.role === filterRole;
+      return matchText && matchRole;
+    });
+
+    tbody.innerHTML = filtered
+      .map((u) => {
+        const isActive = u.status === "ACTIVE";
+        const statusBadge = isActive
+          ? `<span class="badge badge-live">● Hoạt động</span>`
+          : `<span class="badge badge-danger">Đã khóa</span>`;
+
+        return `
+          <tr>
+            <td>#${u.id}</td>
+            <td style="font-weight:600;">${u.fullName}</td>
+            <td>${u.email}</td>
+            <td>${u.phone}</td>
+            <td>
+              <select class="form-select" style="padding:5px 8px; font-size:12px; width:165px;" onchange="changeUserRole(${u.id}, this.value)">
+                ${Object.entries(ROLE_LABELS)
+                  .map(
+                    ([key, label]) =>
+                      `<option value="${key}" ${u.role === key ? "selected" : ""}>${label}</option>`
+                  )
+                  .join("")}
+              </select>
+            </td>
+            <td>${statusBadge}</td>
+            <td>
+              <button class="btn btn-outline btn-sm" onclick="toggleUserStatus(${u.id})">
+                ${isActive ? "Khóa" : "Mở khóa"}
+              </button>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  window.changeUserRole = function (userId, newRole) {
+    const target = allUsers.find((u) => u.id === userId);
+    if (target) {
+      target.role = newRole;
+      updateUserKpis();
     }
-  } catch (e) { showToast(e.message, true); }
-}
+  };
 
-async function submitGame(e) {
-  e.preventDefault();
-  try {
-    await apiFetch('/games', {
-      method: 'POST',
-      body: JSON.stringify({
-        gameName: document.getElementById('g-name').value,
-        publisher: document.getElementById('g-pub').value
-      })
-    });
-    closeModal('modal-game');
-    e.target.reset();
-    showToast('Đã thêm tựa game mới');
-    loadGames();
-  } catch (err) { showToast(err.message, true); }
-}
-
-async function deleteGame(id) {
-  if (!confirm('Xóa tựa game này?')) return;
-  try {
-    await apiFetch(`/games/${id}`, { method: 'DELETE' });
-    showToast('Đã xóa tựa game');
-    loadGames();
-  } catch (err) { showToast(err.message, true); }
-}
-
-// ================= 2. GIẢI ĐẤU =================
-async function loadTournaments() {
-  try {
-    const list = await apiFetch('/tournaments');
-    document.getElementById('tournament-stats').innerHTML = `
-      <div class="stat-card"><span>Tổng giải đấu</span><strong>${list.length}</strong></div>
-      <div class="stat-card"><span>Đang diễn ra</span><strong>${list.filter(t => t.tournamentStatus === 'ONGOING').length}</strong></div>
-      <div class="stat-card"><span>Bản nháp (Draft)</span><strong>${list.filter(t => t.tournamentStatus === 'DRAFT').length}</strong></div>
-      <div class="stat-card"><span>Suất tối đa TB</span><strong>${list[0]?.maxTeams || 16} đội</strong></div>
-    `;
-
-    document.getElementById('tbody-tournaments').innerHTML = list.map(t => `
-      <tr>
-        <td>#${t.tournamentId}</td>
-        <td><strong>${t.tournamentName}</strong></td>
-        <td>${t.gameTitle?.gameName || '-'}</td>
-        <td>${t.startDate || ''} → ${t.endDate || ''}</td>
-        <td>${t.maxTeams} đội</td>
-        <td><span class="badge badge-${t.tournamentStatus.toLowerCase()}">${t.tournamentStatus}</span></td>
-        <td>
-          <button class="btn btn-primary btn-sm" onclick="openApplicationsModal(${t.tournamentId}, '${t.tournamentName}')">Hồ sơ đăng ký</button>
-          ${t.tournamentStatus === 'DRAFT' ? `<button class="btn btn-success btn-sm" onclick="changeTournamentStatus(${t.tournamentId}, 'ONGOING')">Công bố</button>` : ''}
-          <button class="btn btn-danger btn-sm" onclick="deleteTournament(${t.tournamentId})">Xóa</button>
-        </td>
-      </tr>
-    `).join('');
-
-    const applySelect = document.getElementById('apply-tournament-select');
-    if (applySelect) {
-      applySelect.innerHTML = list.map(t => `<option value="${t.tournamentId}">${t.tournamentName}</option>`).join('');
+  window.toggleUserStatus = function (userId) {
+    const target = allUsers.find((u) => u.id === userId);
+    if (target) {
+      target.status = target.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
+      renderUsersTable();
     }
-  } catch (e) { showToast(e.message, true); }
-}
+  };
 
-async function submitTournament(e) {
-  e.preventDefault();
-  try {
-    await apiFetch('/tournaments', {
-      method: 'POST',
-      body: JSON.stringify({
-        tournamentName: document.getElementById('t-name').value,
-        gameId: Number(document.getElementById('t-game').value),
-        organizerId: 1,
-        maxTeams: Number(document.getElementById('t-max').value),
-        startDate: document.getElementById('t-start').value,
-        endDate: document.getElementById('t-end').value
-      })
-    });
-    closeModal('modal-tournament');
+  renderUsersTable();
+  searchInput.addEventListener("input", renderUsersTable);
+  roleSelect.addEventListener("change", renderUsersTable);
+
+  const closeModal = () => (modal.style.display = "none");
+  document.getElementById("btn-open-user-modal").onclick = () => (modal.style.display = "flex");
+  document.getElementById("btn-close-user-modal").onclick = closeModal;
+  document.getElementById("btn-cancel-user-modal").onclick = closeModal;
+
+  document.getElementById("form-create-user").onsubmit = (e) => {
+    e.preventDefault();
+    const newUser = {
+      id: allUsers.length + 1,
+      fullName: document.getElementById("inp-user-name").value.trim(),
+      email: document.getElementById("inp-user-email").value.trim(),
+      phone: document.getElementById("inp-user-phone").value.trim() || "—",
+      role: document.getElementById("inp-user-role").value,
+      status: "ACTIVE"
+    };
+    allUsers.unshift(newUser);
+    renderUsersTable();
     e.target.reset();
-    showToast('Đã tạo giải đấu mới');
-    loadTournaments();
-  } catch (err) { showToast(err.message, true); }
+    closeModal();
+  };
 }
 
-async function changeTournamentStatus(id, status) {
-  try {
-    await apiFetch(`/tournaments/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status })
-    });
-    showToast(`Đã chuyển trạng thái sang ${status}`);
-    loadTournaments();
-  } catch (err) { showToast(err.message, true); }
-}
-
-async function deleteTournament(id) {
-  if (!confirm('Xóa giải đấu này?')) return;
-  try {
-    await apiFetch(`/tournaments/${id}`, { method: 'DELETE' });
-    showToast('Đã xóa giải đấu');
-    loadTournaments();
-  } catch (err) { showToast(err.message, true); }
-}
-
-async function openApplicationsModal(tournamentId, name) {
-  currentTournamentId = tournamentId;
-  document.getElementById('app-modal-title').textContent = `Hồ sơ đăng ký: ${name}`;
-  openModal('modal-applications');
-  await refreshApplications();
-}
-
-async function refreshApplications() {
-  try {
-    const [apps, regions] = await Promise.all([
-      apiFetch(`/tournaments/${currentTournamentId}/applications`),
-      apiFetch(`/tournaments/${currentTournamentId}/regions`)
-    ]);
-
-    document.getElementById('region-summary').innerHTML = regions.length
-      ? regions.map(r => `<span class="region-chip">${r.region}: ${r.approvedSlots}/${r.totalApplications} suất duyệt</span>`).join('')
-      : '<span class="region-chip">Chưa có đội nào nộp hồ sơ</span>';
-
-    document.getElementById('tbody-applications').innerHTML = apps.length ? apps.map(a => `
-      <tr>
-        <td>#${a.applicationId}</td>
-        <td><strong>${a.team.teamName}</strong> (${a.team.teamTag || ''})</td>
-        <td>${a.team.country || '-'}</td>
-        <td><span class="badge badge-${a.applicationStatus.toLowerCase()}">${a.applicationStatus}</span></td>
-        <td>${a.note || '-'}</td>
-        <td>
-          <button class="btn btn-warning btn-sm" onclick="verifyApp(${a.applicationId}, true)">Đạt ĐK (UC-09)</button>
-          <button class="btn btn-success btn-sm" onclick="reviewApp(${a.applicationId}, 'APPROVED')">Duyệt (UC-10)</button>
-          <button class="btn btn-primary btn-sm" onclick="lockRoster(${a.applicationId})">Khóa Roster (UC-11)</button>
-          <button class="btn btn-danger btn-sm" onclick="reviewApp(${a.applicationId}, 'REJECTED')">Từ chối</button>
-        </td>
-      </tr>
-    `).join('') : '<tr><td colspan="6" style="text-align:center;">Chưa có hồ sơ đăng ký nào.</td></tr>';
-  } catch (err) { showToast(err.message, true); }
-}
-
-async function verifyApp(appId, passed) {
-  try {
-    await apiFetch(`/tournaments/applications/${appId}/verify`, {
-      method: 'PATCH',
-      body: JSON.stringify({ coordinatorUserId: 1, passed, note: 'Đạt điều kiện khu vực' })
-    });
-    showToast('Đã xác nhận điều kiện khu vực (UC-09)');
-    refreshApplications();
-  } catch (err) { showToast(err.message, true); }
-}
-
-async function reviewApp(appId, status) {
-  try {
-    await apiFetch(`/tournaments/applications/${appId}/review`, {
-      method: 'PATCH',
-      body: JSON.stringify({ reviewerUserId: 1, status, note: status === 'APPROVED' ? 'Hồ sơ hợp lệ' : 'Từ chối hồ sơ' })
-    });
-    showToast(`Đã cập nhật trạng thái: ${status}`);
-    refreshApplications();
-  } catch (err) { showToast(err.message, true); }
-}
-
-async function lockRoster(appId) {
-  try {
-    await apiFetch(`/tournaments/applications/${appId}/lock-roster`, {
-      method: 'PATCH',
-      body: JSON.stringify({ organizerUserId: 1 })
-    });
-    showToast('Đã khóa Roster chính thức (UC-11)');
-    refreshApplications();
-  } catch (err) { showToast(err.message, true); }
-}
-
-// ================= 3. ĐỘI TUYỂN & ROSTER =================
-async function loadTeams() {
-  try {
-    const teams = await apiFetch('/teams');
-    document.getElementById('tbody-teams').innerHTML = teams.map(t => `
-      <tr>
-        <td>#${t.teamId}</td>
-        <td><strong>${t.teamName}</strong></td>
-        <td><span class="badge badge-draft">${t.teamTag || '-'}</span></td>
-        <td>${t.country || '-'}</td>
-        <td>${t.captain?.fullName || '-'}</td>
-        <td>
-          <button class="btn btn-primary btn-sm" onclick="openRosterModal(${t.teamId}, '${t.teamName}')">Roster & Nộp đơn</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteTeam(${t.teamId})">Xóa</button>
-        </td>
-      </tr>
-    `).join('');
-  } catch (e) { showToast(e.message, true); }
-}
-
-async function submitTeam(e) {
-  e.preventDefault();
-  try {
-    await apiFetch('/teams', {
-      method: 'POST',
-      body: JSON.stringify({
-        captainUserId: 2,
-        teamName: document.getElementById('team-name').value,
-        teamTag: document.getElementById('team-tag').value,
-        country: document.getElementById('team-country').value
-      })
-    });
-    closeModal('modal-team');
-    e.target.reset();
-    showToast('Đã đăng ký đội tuyển mới');
-    loadTeams();
-  } catch (err) { showToast(err.message, true); }
-}
-
-async function deleteTeam(id) {
-  if (!confirm('Xóa đội tuyển này?')) return;
-  try {
-    await apiFetch(`/teams/${id}`, { method: 'DELETE' });
-    showToast('Đã xóa đội tuyển');
-    loadTeams();
-  } catch (err) { showToast(err.message, true); }
-}
-
-async function openRosterModal(teamId, teamName) {
-  currentTeamId = teamId;
-  document.getElementById('roster-modal-title').textContent = `Roster đội tuyển: ${teamName}`;
-  openModal('modal-roster');
-  await refreshRoster();
-}
-
-async function refreshRoster() {
-  try {
-    const members = await apiFetch(`/teams/${currentTeamId}/roster`);
-    document.getElementById('tbody-roster').innerHTML = members.length ? members.map(m => `
-      <tr>
-        <td>#${m.player.playerId}</td>
-        <td>${m.player.playerName}</td>
-        <td><strong>${m.player.inGameName}</strong></td>
-        <td>${m.player.gameAccountId}</td>
-        <td><span class="badge badge-ongoing">${m.memberRole}</span></td>
-        <td><button class="btn btn-danger btn-sm" onclick="removeMember(${m.player.playerId})">Gỡ</button></td>
-      </tr>
-    `).join('') : '<tr><td colspan="6" style="text-align:center;">Chưa có tuyển thủ trong danh sách.</td></tr>';
-  } catch (err) { showToast(err.message, true); }
-}
-
-async function submitRosterMember(e) {
-  e.preventDefault();
-  try {
-    await apiFetch(`/teams/${currentTeamId}/roster`, {
-      method: 'POST',
-      body: JSON.stringify({
-        playerName: document.getElementById('p-name').value,
-        inGameName: document.getElementById('p-ign').value,
-        gameAccountId: document.getElementById('p-acc').value,
-        memberRole: document.getElementById('p-role').value
-      })
-    });
-    e.target.reset();
-    showToast('Đã thêm tuyển thủ vào Roster');
-    refreshRoster();
-  } catch (err) { showToast(err.message, true); }
-}
-
-async function removeMember(playerId) {
-  try {
-    await apiFetch(`/teams/${currentTeamId}/roster/${playerId}`, { method: 'DELETE' });
-    showToast('Đã gỡ tuyển thủ khỏi Roster');
-    refreshRoster();
-  } catch (err) { showToast(err.message, true); }
-}
-
-async function submitApplyTournament() {
-  const tournamentId = Number(document.getElementById('apply-tournament-select').value);
-  try {
-    await apiFetch(`/teams/${currentTeamId}/apply`, {
-      method: 'POST',
-      body: JSON.stringify({ tournamentId })
-    });
-    showToast('Nộp hồ sơ tham dự giải đấu thành công!');
-    closeModal('modal-roster');
-  } catch (err) { showToast(err.message, true); }
-}
-
-// ================= 4. TÀI KHOẢN =================
-async function loadUsers() {
-  try {
-    const users = await apiFetch('/users');
-    document.getElementById('tbody-users').innerHTML = users.map(u => `
-      <tr>
-        <td>#${u.userId}</td>
-        <td><strong>${u.fullName}</strong></td>
-        <td>${u.email}</td>
-        <td><span class="badge badge-locked">${u.role}</span></td>
-        <td><span class="badge badge-${u.accountStatus.toLowerCase()}">${u.accountStatus}</span></td>
-        <td>
-          <button class="btn btn-warning btn-sm" onclick="toggleUserStatus(${u.userId}, '${u.accountStatus}')">
-            ${u.accountStatus === 'ACTIVE' ? 'Khóa TK' : 'Mở khóa'}
-          </button>
-        </td>
-      </tr>
-    `).join('');
-  } catch (e) { showToast(e.message, true); }
-}
-
-async function submitUser(e) {
-  e.preventDefault();
-  try {
-    await apiFetch('/users', {
-      method: 'POST',
-      body: JSON.stringify({
-        fullName: document.getElementById('u-name').value,
-        email: document.getElementById('u-email').value,
-        password: document.getElementById('u-pass').value,
-        role: document.getElementById('u-role').value
-      })
-    });
-    closeModal('modal-user');
-    e.target.reset();
-    showToast('Đã tạo tài khoản mới');
-    loadUsers();
-  } catch (err) { showToast(err.message, true); }
-}
-
-async function toggleUserStatus(id, currentStatus) {
-  const nextStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
-  try {
-    await apiFetch(`/users/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify({ accountStatus: nextStatus })
-    });
-    showToast(`Đã đổi trạng thái tài khoản sang ${nextStatus}`);
-    loadUsers();
-  } catch (err) { showToast(err.message, true); }
-}
+// Bộ điều phối gọi hàm khởi tạo theo từng trang
+window.initPage = async function (pageName) {
+  if (pageName === "dashboard") await initDashboardPage();
+  if (pageName === "tournaments") await initTournamentsPage();
+  if (pageName === "accounts") await initAccountsPage();
+};

@@ -1,0 +1,74 @@
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Danh sách giải đấu</h3>
+    <div class="toolbar">
+      <input type="text" id="search-tournament" class="form-input" style="width:240px;" placeholder="Tìm tên giải đấu..." />
+      <select id="filter-tournament-status" class="form-select" style="width:180px;">
+        <option value="ALL">Tất cả trạng thái</option>
+        <option value="ONGOING">Đang diễn ra</option>
+        <option value="COMPLETED">Đã kết thúc</option>
+        <option value="DRAFT">Nháp / Mở đăng ký</option>
+      </select>
+      <button id="btn-open-tournament-modal" class="btn btn-primary">+ Thêm giải đấu</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Tên giải đấu</th>
+          <th>Tựa game</th>
+          <th>Ngày bắt đầu</th>
+          <th>Ngày kết thúc</th>
+          <th>Số đội</th>
+          <th>Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody id="tournaments-table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal thêm giải đấu mới -->
+<div id="tournament-modal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); align-items:center; justify-content:center; z-index:999;">
+  <div class="card" style="width:100%; max-width:480px; margin:0 16px;">
+    <div class="card-header">
+      <h3 class="card-title">Tạo giải đấu mới</h3>
+      <button type="button" id="btn-close-tournament-modal" class="btn btn-outline btn-sm">✕</button>
+    </div>
+    <form id="form-create-tournament">
+      <div class="form-group">
+        <label class="form-label">Tên giải đấu *</label>
+        <input type="text" id="inp-tournament-name" class="form-input" required placeholder="VD: VCS Mùa Xuân 2027" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tựa game</label>
+        <select id="inp-tournament-game" class="form-select">
+          <option value="1">Liên Minh Huyền Thoại</option>
+          <option value="2">VALORANT</option>
+          <option value="3">Đấu Trường Chân Lý (TFT)</option>
+        </select>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Ngày bắt đầu *</label>
+          <input type="date" id="inp-start-date" class="form-input" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ngày kết thúc *</label>
+          <input type="date" id="inp-end-date" class="form-input" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Số đội tối đa</label>
+        <input type="number" id="inp-max-teams" class="form-input" value="16" min="2" max="64" />
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+        <button type="button" id="btn-cancel-tournament-modal" class="btn btn-outline">Hủy</button>
+        <button type="submit" class="btn btn-primary">Lưu giải đấu</button>
+      </div>
+    </form>
+  </div>
+</div>
