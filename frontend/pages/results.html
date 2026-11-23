@@ -1,0 +1,26 @@
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Kết quả trận đấu</h3>
+    <div class="toolbar">
+      <select id="filter-result-status" class="form-select" style="width:200px;">
+        <option value="ALL">Tất cả</option>
+        <option value="NONE">Chưa có kết quả</option>
+        <option value="DRAFT">Nháp</option>
+        <option value="SUBMITTED">Chờ xác nhận</option>
+        <option value="CONFIRMED">Đã xác nhận</option>
+      </select>
+    </div>
+  </div>
+  <div id="result-error" style="display:none;color:#dc2626;padding:8px 16px;"></div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Mã trận</th><th>Cặp đấu</th><th>Thể thức</th><th>Tỷ số</th>
+          <th>Đội thắng</th><th>Trạng thái</th><th>Ghi chú</th><th>Thao tác</th>
+        </tr>
+      </thead>
+      <tbody id="results-table-body"></tbody>
+    </table>
+  </div>
+</div>
