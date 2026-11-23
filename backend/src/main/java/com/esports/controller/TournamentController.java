@@ -2,6 +2,7 @@ package com.esports.controller;
 
 import com.esports.dto.ApplicationReviewDTO;
 import com.esports.dto.TournamentRequestDTO;
+import com.esports.dto.TournamentOptionDTO;
 import com.esports.entity.ParticipationApplication;
 import com.esports.entity.Tournament;
 import com.esports.service.TeamService;
@@ -21,6 +22,12 @@ public class TournamentController {
     @GetMapping
     public List<Tournament> getAll() {
         return tournamentService.getAllTournaments();
+    }
+
+    /** Danh sách giải rút gọn, chỉ dùng cho các bộ chọn của module Lịch thi đấu. */
+    @GetMapping("/options")
+    public List<TournamentOptionDTO> getOptions() {
+        return tournamentService.getAllTournaments().stream().map(TournamentOptionDTO::from).toList();
     }
 
     @PostMapping

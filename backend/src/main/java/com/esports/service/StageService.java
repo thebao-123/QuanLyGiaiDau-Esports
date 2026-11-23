@@ -4,6 +4,8 @@ import com.esports.dto.StageRequestDTO;
 import com.esports.entity.Stage;
 import com.esports.entity.Tournament;
 import com.esports.repository.StageRepository;
+import com.esports.repository.RoundRepository;
+import com.esports.repository.TeamStageRecordRepository;
 import com.esports.repository.TournamentRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -19,11 +21,17 @@ public class StageService
 {
     private final StageRepository stageRepo;
     private final TournamentRepository tournamentRepo;
+    private final RoundRepository roundRepo;
+    private final TeamStageRecordRepository teamStageRecordRepo;
 
-    public StageService(StageRepository stageRepository, TournamentRepository tournamentRepository)
-    {
+    public StageService(StageRepository stageRepository,
+                        TournamentRepository tournamentRepository,
+                        RoundRepository roundRepository,
+                        TeamStageRecordRepository teamStageRecordRepository) {
         this.stageRepo = stageRepository;
         this.tournamentRepo = tournamentRepository;
+        this.roundRepo = roundRepository;
+        this.teamStageRecordRepo = teamStageRecordRepository;
     }
 
 
@@ -57,12 +65,16 @@ public class StageService
 
 
     public List<Stage> getStagesByType(String stageType) {
-        return stageRepo.findByStageType(stageType);
+        if (stageType == null || stageType.isBlank())
+            throw new IllegalArgumentException("Thể loại Giai đoạn không được để trống");
+        return stageRepo.findByStageType(stageType.trim().toUpperCase());
     }
 
 
     public List<Stage> getStagesByStatus(String stageStatus) {
-        return stageRepo.findByStageStatus(stageStatus);
+        if (stageStatus == null || stageStatus.isBlank())
+            throw new IllegalArgumentException("Trạng thái Giai đoạn không được để trống");
+        return stageRepo.findByStageStatus(stageStatus.trim().toUpperCase());
     }
 
 
@@ -98,6 +110,14 @@ public class StageService
 
         Tournament tournament = getTournament(request.getTournamentId());
 
+        boolean changingTournament = !existingStage.getTournament().getTournamentId()
+                .equals(request.getTournamentId());
+        if (changingTournament && (roundRepo.countByStage_StageId(stageId) > 0
+                || teamStageRecordRepo.countByStage_StageId(stageId) > 0)) {
+            throw new IllegalArgumentException(
+                    "Không thể chuyển giai đoạn đã có vòng đấu hoặc đội tham gia sang giải đấu khác.");
+        }
+
         boolean sameStage = existingStage.getTournament().getTournamentId()
                 .equals(request.getTournamentId())
                 && existingStage.getStageName()
@@ -124,7 +144,12 @@ public class StageService
     public void deleteStage(Long stageId)
     {
         Stage stage = getStageById(stageId);
-
+        if (roundRepo.countByStage_StageId(stageId) > 0) {
+            throw new IllegalArgumentException("Không thể xóa giai đoạn còn vòng đấu. Hãy xóa các vòng đấu trước.");
+        }
+        if (teamStageRecordRepo.countByStage_StageId(stageId) > 0) {
+            throw new IllegalArgumentException("Không thể xóa giai đoạn đã có đội tuyển tham gia.");
+        }
         stageRepo.delete(stage);
     }
 
@@ -144,9 +169,11 @@ public class StageService
         if (request.getStageName().length() > 100)
             throw new IllegalArgumentException("Tên Giai đoạn không được vượt quá 100 ký tự");
 
-        if (request.getStageType() == null
-                || !java.util.Set.of("QUALIFIER", "PLAY_IN", "SWISS_STAGE", "GROUP_STAGE", "LEAGUE_STAGE", "PLAYOFF")
-                        .contains(request.getStageType()))
+        if (request.getStageType() == null || request.getStageType().isBlank())
+            throw new IllegalArgumentException("Thể loại Giai đoạn không được để trống");
+        request.setStageType(request.getStageType().trim().toUpperCase());
+        if (!java.util.Set.of("QUALIFIER", "PLAY_IN", "SWISS_STAGE", "GROUP_STAGE", "LEAGUE_STAGE", "PLAYOFF")
+                .contains(request.getStageType()))
             throw new IllegalArgumentException("Thể loại Giai đoạn không hợp lệ");
 
         if (request.getStageOrder() == null || request.getStageOrder() <= 0)
@@ -155,6 +182,7 @@ public class StageService
         if (request.getStageStatus() == null || request.getStageStatus().isBlank())
             throw new IllegalArgumentException("Trạng thái Giai đoạn không được để trống");
 
+        request.setStageStatus(request.getStageStatus().trim().toUpperCase());
         if (request.getStageStatus().length() > 20)
             throw new IllegalArgumentException("Trạng thái Giai đoạn không được vượt quá 20 ký tự");
 

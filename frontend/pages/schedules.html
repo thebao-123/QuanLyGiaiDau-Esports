@@ -1,49 +1,189 @@
-<div class="card">
-  <div class="card-header">
-    <h3 class="card-title">Lịch thi đấu</h3>
-    <div class="toolbar">
-      <select id="filter-match-status" class="form-select" style="width:200px;">
-        <option value="ALL">Tất cả trạng thái</option>
-        <option value="SCHEDULED">Đã lên lịch</option>
-        <option value="READY">Sẵn sàng</option>
-        <option value="IN_PROGRESS">Đang diễn ra</option>
-        <option value="PENDING_CONFIRMATION">Chờ xác nhận</option>
-        <option value="COMPLETED">Hoàn thành</option>
-      </select>
-      <button id="btn-open-match-modal" class="btn btn-primary">+ Tạo trận đấu</button>
-    </div>
-  </div>
-  <div id="match-error" style="display:none;color:#dc2626;padding:8px 16px;"></div>
-  <div class="table-wrap">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Mã trận</th><th>Vòng</th><th>Cặp đấu</th><th>Thời gian</th><th>Địa điểm</th>
-          <th>Thể thức</th><th>Trạng thái</th><th>Trọng tài</th><th>Thao tác</th>
-        </tr>
-      </thead>
-      <tbody id="matches-table-body"></tbody>
-    </table>
-  </div>
-</div>
+<div class="schedule-page">
+  <div class="schedule-notice" id="scheduleNotice" role="status" aria-live="polite" hidden></div>
 
-<div id="match-modal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); align-items:center; justify-content:center; z-index:999;">
-  <div class="card" style="width:100%; max-width:480px; margin:0 16px;">
-    <div class="card-header">
-      <h3 class="card-title" id="match-modal-title">Tạo trận đấu</h3>
-      <button type="button" id="btn-close-match-modal" class="btn btn-outline btn-sm">✕</button>
+  <section class="card schedule-main-card" aria-label="Lịch thi đấu">
+    <div class="schedule-toolbar-row">
+      <div class="schedule-toolbar-filters">
+        <label class="schedule-filter-control" for="scheduleTournament">
+          <span class="schedule-filter-icon" aria-hidden="true">🏆</span>
+          <select class="form-select" id="scheduleTournament" aria-label="Chọn giải đấu">
+            <option value="ALL">Tất cả giải đấu</option>
+          </select>
+        </label>
+        <label class="schedule-filter-control" for="scheduleRoundFilter">
+          <span class="schedule-filter-icon" aria-hidden="true">▱</span>
+          <select class="form-select" id="scheduleRoundFilter" aria-label="Chọn vòng đấu">
+            <option value="ALL">Tất cả vòng đấu</option>
+          </select>
+        </label>
+        <label class="schedule-filter-control schedule-month-control" for="scheduleMonth">
+          <span class="schedule-filter-icon" aria-hidden="true">▦</span>
+          <input class="form-input" id="scheduleMonth" type="month" aria-label="Tháng hiển thị" />
+        </label>
+      </div>
+
+      <div class="schedule-toolbar-actions">
+        <div class="schedule-view-switch" role="group" aria-label="Chế độ hiển thị">
+          <button class="schedule-view-button active" id="scheduleViewList" type="button" aria-pressed="true">Danh sách</button>
+          <button class="schedule-view-button" id="scheduleViewWeek" type="button" aria-pressed="false">Lịch tuần</button>
+        </div>
+        <button class="btn btn-primary" id="scheduleAddMatch" type="button">＋ Tạo lịch thi đấu</button>
+      </div>
     </div>
-    <form id="form-match" style="padding:16px;display:grid;gap:10px;">
-      <input class="form-input" id="inp-match-code" placeholder="Mã trận (VD: M-001)" required />
-      <input class="form-input" id="inp-match-round" type="number" placeholder="ID vòng đấu" required />
-      <input class="form-input" id="inp-match-team1" type="number" placeholder="ID đội 1" required />
-      <input class="form-input" id="inp-match-team2" type="number" placeholder="ID đội 2" required />
-      <input class="form-input" id="inp-match-time" type="datetime-local" />
-      <input class="form-input" id="inp-match-venue" placeholder="Địa điểm" />
-      <select class="form-select" id="inp-match-bo">
-        <option value="1">BO1</option><option value="3" selected>BO3</option><option value="5">BO5</option>
-      </select>
-      <button type="submit" class="btn btn-primary">Lưu</button>
-    </form>
+
+    <div class="schedule-advanced-row">
+      <button class="schedule-advanced-toggle" id="scheduleAdvancedToggle" type="button" aria-expanded="false" aria-controls="scheduleAdvancedFilters">Bộ lọc nâng cao <span aria-hidden="true">⌄</span></button>
+      <button class="btn btn-outline btn-sm" id="scheduleRefresh" type="button">↻ Làm mới</button>
+    </div>
+    <div class="schedule-advanced-filters" id="scheduleAdvancedFilters" hidden>
+      <div class="form-group schedule-search-field">
+        <label class="form-label" for="scheduleSearch">Tìm kiếm trận đấu</label>
+        <input class="form-input" id="scheduleSearch" type="search" placeholder="Mã trận, tên đội, vòng đấu, địa điểm..." />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="scheduleStageFilter">Giai đoạn</label>
+        <select class="form-select" id="scheduleStageFilter"><option value="ALL">Tất cả giai đoạn</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="scheduleMatchStatus">Trạng thái</label>
+        <select class="form-select" id="scheduleMatchStatus">
+          <option value="ALL">Tất cả trạng thái</option>
+          <option value="SCHEDULED">Sắp diễn ra</option><option value="READY">Sẵn sàng</option>
+          <option value="IN_PROGRESS">Đang diễn ra</option><option value="PENDING_CONFIRMATION">Chờ xác nhận</option>
+          <option value="COMPLETED">Đã hoàn thành</option>
+        </select>
+      </div>
+      <button class="btn btn-outline" id="scheduleResetFilters" type="button">Xóa bộ lọc</button>
+    </div>
+
+    <div class="schedule-week-navigation" id="scheduleWeekControls" hidden>
+      <button class="schedule-week-nav-button" id="schedulePrevWeek" type="button" aria-label="Tuần trước">‹</button>
+      <div class="schedule-week-label" id="scheduleWeekLabel">Tuần hiện tại</div>
+      <button class="schedule-week-nav-button" id="scheduleNextWeek" type="button" aria-label="Tuần sau">›</button>
+    </div>
+
+    <div class="schedule-week-strip" id="scheduleWeekStrip" hidden aria-label="Chọn ngày trong tuần"></div>
+
+    <div class="schedule-results-heading">
+      <div>
+        <h3 id="scheduleResultHeading">Tất cả trận đấu</h3>
+        <p id="scheduleResultSubheading">Các trận được sắp xếp theo thời gian thi đấu.</p>
+      </div>
+      <span class="schedule-count" id="scheduleMatchResultCount">0 trận đấu</span>
+    </div>
+
+    <div class="table-wrap schedule-table-wrap">
+      <table class="data-table schedule-match-table">
+        <thead><tr>
+          <th>Thời gian</th><th>Trận đấu</th><th>Vòng</th><th>Thể thức</th><th>Trạng thái</th><th>Thao tác</th>
+        </tr></thead>
+        <tbody id="scheduleMatchTableBody"><tr><td colspan="6" class="schedule-empty-cell">Đang tải dữ liệu lịch thi đấu...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="schedule-table-footer">
+      <span>Hiển thị <strong id="scheduleVisibleMatchCount">0</strong> trận đấu</span>
+      <span id="scheduleTimezoneLabel">Tất cả thời gian theo GMT+7</span>
+    </div>
+  </section>
+
+  <section class="card schedule-list-panel" id="scheduleStructure">
+    <div class="card-header schedule-section-header">
+      <div>
+        <h3 class="card-title">Giai đoạn và vòng đấu</h3>
+        <p class="schedule-description">Tổ chức các vòng theo từng giai đoạn để làm cơ sở tạo trận đấu.</p>
+      </div>
+      <div class="toolbar"><span class="schedule-count" id="scheduleStageResultCount">0 giai đoạn</span><button class="btn btn-primary" id="scheduleAddStage" type="button">＋ Thêm giai đoạn</button></div>
+    </div>
+    <div class="schedule-stage-list" id="scheduleStageList"><div class="schedule-empty-cell">Đang tải cấu trúc giải đấu...</div></div>
+  </section>
+
+  <!-- Các chỉ số nội bộ giữ lại để tương thích bộ khởi tạo trang. -->
+  <div hidden aria-hidden="true">
+    <span id="scheduleStatTournaments"></span><span id="scheduleStatStages"></span>
+    <span id="scheduleStatRounds"></span><span id="scheduleStatMatches"></span>
+    <input id="scheduleDate" type="date" />
   </div>
+  <!-- Modal giai đoạn -->
+  <div class="schedule-modal-backdrop" id="scheduleStageModal" aria-hidden="true" hidden>
+    <section class="schedule-modal" role="dialog" aria-modal="true" aria-labelledby="scheduleStageModalTitle">
+      <header class="schedule-modal-header"><div><h3 id="scheduleStageModalTitle">Thêm giai đoạn</h3><p>Thiết lập một giai đoạn thuộc giải đấu.</p></div><button class="btn btn-outline btn-sm" type="button" data-close-schedule-modal="scheduleStageModal">✕</button></header>
+      <form id="scheduleStageForm"><div class="schedule-modal-body">
+        <input type="hidden" id="scheduleStageId" />
+        <div class="schedule-form-grid">
+          <div class="form-group schedule-form-field-full"><label class="form-label" for="scheduleStageTournamentId">Giải đấu *</label><select class="form-select" id="scheduleStageTournamentId" required><option value="">Chọn giải đấu</option></select></div>
+          <div class="form-group schedule-form-field-full"><label class="form-label" for="scheduleStageName">Tên giai đoạn *</label><input class="form-input" id="scheduleStageName" maxlength="100" required placeholder="VD: Vòng Thụy Sĩ" /></div>
+          <div class="form-group"><label class="form-label" for="scheduleStageTypeInput">Loại giai đoạn *</label><select class="form-select" id="scheduleStageTypeInput" required><option value="QUALIFIER">Vòng loại</option><option value="PLAY_IN">Vòng khởi động</option><option value="GROUP_STAGE" selected>Vòng bảng</option><option value="SWISS_STAGE">Vòng Thụy Sĩ</option><option value="LEAGUE_STAGE">Vòng League</option><option value="PLAYOFF">Vòng Playoffs</option></select></div>
+          <div class="form-group"><label class="form-label" for="scheduleStageOrder">Thứ tự giai đoạn *</label><input class="form-input" id="scheduleStageOrder" type="number" min="1" step="1" required /></div>
+          <div class="form-group"><label class="form-label" for="scheduleStageStart">Bắt đầu</label><input class="form-input" id="scheduleStageStart" type="datetime-local" /></div>
+          <div class="form-group"><label class="form-label" for="scheduleStageEnd">Kết thúc</label><input class="form-input" id="scheduleStageEnd" type="datetime-local" /></div>
+          <div class="form-group schedule-form-field-full"><label class="form-label" for="scheduleStageStatusInput">Trạng thái *</label><select class="form-select" id="scheduleStageStatusInput" required><option value="UPCOMING">Sắp diễn ra</option><option value="ONGOING">Đang diễn ra</option><option value="COMPLETED">Đã kết thúc</option></select></div>
+        </div>
+      </div><footer class="schedule-modal-footer"><span class="schedule-required-note">* Thông tin bắt buộc</span><div class="toolbar"><button class="btn btn-outline" type="button" data-close-schedule-modal="scheduleStageModal">Hủy</button><button class="btn btn-primary" id="scheduleStageSubmit" type="submit">Lưu giai đoạn</button></div></footer></form>
+    </section>
+  </div>
+
+  <!-- Modal vòng đấu -->
+  <div class="schedule-modal-backdrop" id="scheduleRoundModal" aria-hidden="true" hidden>
+    <section class="schedule-modal schedule-modal-compact" role="dialog" aria-modal="true" aria-labelledby="scheduleRoundModalTitle">
+      <header class="schedule-modal-header"><div><h3 id="scheduleRoundModalTitle">Thêm vòng đấu</h3><p id="scheduleRoundStageLabel">Chọn giai đoạn cho vòng đấu.</p></div><button class="btn btn-outline btn-sm" type="button" data-close-schedule-modal="scheduleRoundModal">✕</button></header>
+      <form id="scheduleRoundForm"><div class="schedule-modal-body"><input type="hidden" id="scheduleRoundId" />
+        <div class="schedule-form-grid">
+          <div class="form-group schedule-form-field-full"><label class="form-label" for="scheduleRoundStageId">Giai đoạn *</label><select class="form-select" id="scheduleRoundStageId" required><option value="">Chọn giai đoạn</option></select></div>
+          <div class="form-group"><label class="form-label" for="scheduleRoundNumber">Thứ tự vòng *</label><input class="form-input" id="scheduleRoundNumber" type="number" min="1" step="1" required /></div>
+          <div class="form-group"><label class="form-label" for="scheduleRoundName">Tên vòng đấu</label><input class="form-input" id="scheduleRoundName" maxlength="100" placeholder="VD: Ngày thi đấu 1" /></div>
+          <div class="form-group schedule-form-field-full"><label class="form-label" for="scheduleRoundDate">Thời gian dự kiến</label><input class="form-input" id="scheduleRoundDate" type="datetime-local" /></div>
+          <div class="form-group schedule-form-field-full"><label class="form-label" for="scheduleRoundStatusInput">Trạng thái *</label><select class="form-select" id="scheduleRoundStatusInput" required><option value="UPCOMING">Sắp diễn ra</option><option value="ONGOING">Đang diễn ra</option><option value="COMPLETED">Đã kết thúc</option></select></div>
+        </div>
+      </div><footer class="schedule-modal-footer"><span class="schedule-required-note">* Thông tin bắt buộc</span><div class="toolbar"><button class="btn btn-outline" type="button" data-close-schedule-modal="scheduleRoundModal">Hủy</button><button class="btn btn-primary" id="scheduleRoundSubmit" type="submit">Lưu vòng đấu</button></div></footer></form>
+    </section>
+  </div>
+
+  <!-- Modal lịch trận -->
+  <div class="schedule-modal-backdrop" id="scheduleMatchModal" aria-hidden="true" hidden>
+    <section class="schedule-modal" role="dialog" aria-modal="true" aria-labelledby="scheduleMatchModalTitle">
+      <header class="schedule-modal-header"><div><h3 id="scheduleMatchModalTitle">Thêm lịch thi đấu</h3><p>Chọn vòng đấu và hai đội đã đăng ký trong giai đoạn.</p></div><button class="btn btn-outline btn-sm" type="button" data-close-schedule-modal="scheduleMatchModal">✕</button></header>
+      <form id="scheduleMatchForm"><div class="schedule-modal-body"><input type="hidden" id="scheduleMatchId" />
+        <div class="schedule-form-grid">
+          <div class="form-group"><label class="form-label" for="scheduleMatchCode">Mã trận *</label><input class="form-input" id="scheduleMatchCode" maxlength="30" required placeholder="VD: DEMO-R1-M1" /></div>
+          <div class="form-group"><label class="form-label" for="scheduleMatchBestOf">Thể thức *</label><select class="form-select" id="scheduleMatchBestOf" required><option value="1">BO1</option><option value="3" selected>BO3</option><option value="5">BO5</option></select></div>
+          <div class="form-group schedule-form-field-full"><label class="form-label" for="scheduleMatchRoundId">Vòng đấu *</label><select class="form-select" id="scheduleMatchRoundId" required><option value="">Chọn vòng đấu</option></select></div>
+          <div class="form-group"><label class="form-label" for="scheduleMatchTeam1Id">Đội tuyển 1 *</label><select class="form-select" id="scheduleMatchTeam1Id" required disabled><option value="">Chọn vòng đấu trước</option></select></div>
+          <div class="form-group"><label class="form-label" for="scheduleMatchTeam2Id">Đội tuyển 2 *</label><select class="form-select" id="scheduleMatchTeam2Id" required disabled><option value="">Chọn vòng đấu trước</option></select></div>
+          <div class="form-group"><label class="form-label" for="scheduleMatchTime">Thời gian thi đấu</label><input class="form-input" id="scheduleMatchTime" type="datetime-local" /></div>
+          <div class="form-group"><label class="form-label" for="scheduleMatchVenue">Địa điểm</label><input class="form-input" id="scheduleMatchVenue" maxlength="100" placeholder="VD: Seoul, Hàn Quốc" /></div>
+        </div>
+        <p class="schedule-help" id="scheduleMatchHelp">Chọn vòng đấu để tải danh sách đội tham gia giai đoạn tương ứng.</p>
+        <div class="schedule-prerequisite-panel" id="scheduleMatchPrerequisites" hidden></div>
+      </div><footer class="schedule-modal-footer"><span class="schedule-required-note">* Thông tin bắt buộc</span><div class="toolbar"><button class="btn btn-outline" type="button" data-close-schedule-modal="scheduleMatchModal">Hủy</button><button class="btn btn-primary" id="scheduleMatchSubmit" type="submit">Lưu lịch thi đấu</button></div></footer></form>
+    </section>
+  </div>
+
+  <!-- Modal đội tham gia giai đoạn -->
+  <div class="schedule-modal-backdrop" id="scheduleStageTeamsModal" aria-hidden="true" hidden>
+    <section class="schedule-modal" role="dialog" aria-modal="true" aria-labelledby="scheduleStageTeamsTitle">
+      <header class="schedule-modal-header"><div><h3 id="scheduleStageTeamsTitle">Đội tham gia giai đoạn</h3><p>Chỉ những đội được thêm vào giai đoạn mới có thể được chọn khi lập lịch trận.</p></div><button class="btn btn-outline btn-sm" type="button" data-close-schedule-modal="scheduleStageTeamsModal">✕</button></header>
+      <div class="schedule-modal-body">
+        <div id="scheduleStageTeamsList" class="schedule-stage-team-list"></div>
+        <form id="scheduleStageTeamForm" class="schedule-team-add-form">
+          <div class="form-group"><label class="form-label" for="scheduleStageTeamSelect">Đội tuyển *</label><select class="form-select" id="scheduleStageTeamSelect" required><option value="">Chọn đội chưa tham gia</option></select></div>
+          <div class="form-group"><label class="form-label" for="scheduleStageTeamSeed">Hạt giống</label><input class="form-input" id="scheduleStageTeamSeed" type="number" min="1" step="1" placeholder="Tùy chọn" /></div>
+          <div class="form-group"><label class="form-label" for="scheduleStageTeamStatus">Trạng thái *</label><select class="form-select" id="scheduleStageTeamStatus" required><option value="ACTIVE">Đang tham gia</option><option value="QUALIFIED">Đủ điều kiện</option><option value="PENDING">Chờ xác nhận</option></select></div>
+          <button class="btn btn-primary" id="scheduleStageTeamSubmit" type="submit">＋ Thêm đội</button>
+        </form>
+      </div><footer class="schedule-modal-footer schedule-modal-footer-end"><button class="btn btn-outline" type="button" data-close-schedule-modal="scheduleStageTeamsModal">Đóng</button></footer>
+    </section>
+  </div>
+
+  <!-- Modal trọng tài -->
+  <div class="schedule-modal-backdrop" id="scheduleRefereeModal" aria-hidden="true" hidden>
+    <section class="schedule-modal schedule-modal-compact" role="dialog" aria-modal="true" aria-labelledby="scheduleRefereeModalTitle">
+      <header class="schedule-modal-header"><div><h3 id="scheduleRefereeModalTitle">Phân công trọng tài</h3><p id="scheduleRefereeMatchLabel">Trận đấu</p></div><button class="btn btn-outline btn-sm" type="button" data-close-schedule-modal="scheduleRefereeModal">✕</button></header>
+      <div class="schedule-modal-body"><h4 class="schedule-subheading">Trọng tài hiện tại</h4><div class="schedule-referee-list" id="scheduleRefereeCurrentList"></div>
+        <form id="scheduleRefereeForm" class="schedule-referee-form"><div class="form-group"><label class="form-label" for="scheduleRefereeSelect">Thêm trọng tài</label><select class="form-select" id="scheduleRefereeSelect"><option value="">Chọn tài khoản trọng tài</option></select></div><button class="btn btn-primary" id="scheduleRefereeSubmit" type="submit">＋ Phân công</button></form>
+        <p class="schedule-help">Backend sẽ từ chối nếu trọng tài đã được phân công hoặc bị trùng lịch.</p>
+      </div><footer class="schedule-modal-footer schedule-modal-footer-end"><button class="btn btn-outline" type="button" data-close-schedule-modal="scheduleRefereeModal">Đóng</button></footer>
+    </section>
+  </div>
+
+  <div class="schedule-toast" id="scheduleToast" role="status" aria-live="polite"></div>
 </div>

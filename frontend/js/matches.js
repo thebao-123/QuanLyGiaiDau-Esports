@@ -1,189 +1,172 @@
-// Phân hệ Quản lý trận đấu & kết quả (UC-15..22). Gọi API thật, không dùng dữ liệu mẫu để lỗi không bị che.
-const MATCH_STATUS_LABELS = {
-  SCHEDULED: "Đã lên lịch", READY: "Sẵn sàng", IN_PROGRESS: "Đang diễn ra",
-  PENDING_CONFIRMATION: "Chờ xác nhận", COMPLETED: "Hoàn thành"
+// Phân hệ quản lý kết quả trận đấu. Phần Lịch thi đấu được xử lý riêng trong schedules.js.
+const RESULT_LABELS = {
+    DRAFT: 'Nháp',
+    SUBMITTED: 'Chờ xác nhận',
+    CONFIRMED: 'Đã xác nhận'
 };
-const MATCH_NEXT = { SCHEDULED: "READY", READY: "IN_PROGRESS", IN_PROGRESS: null };
-const RESULT_LABELS = { DRAFT: "Nháp", SUBMITTED: "Chờ xác nhận", CONFIRMED: "Đã xác nhận" };
 
-const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const resultEscapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+})[character]);
 
-async function matchApi(path, method = "GET", body) {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined
-  });
-  if (res.status === 204) return null;
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-  return data;
-}
-
-function currentUserId() {
-  const u = JSON.parse(localStorage.getItem("currentUser") || "null");
-  return u?.userId ?? u?.id ?? Number(prompt("Nhập ID tài khoản của bạn:"));
-}
-
-function showError(id, msg) {
-  const el = document.getElementById(id);
-  el.textContent = msg || "";
-  el.style.display = msg ? "block" : "none";
-}
-
-// Trả về true nếu thành công, false nếu có lỗi (lỗi được hiển thị ở ô báo lỗi).
-async function runAction(errId, fn, reload) {
-  try { showError(errId, ""); await fn(); await reload(); return true; }
-  catch (e) { showError(errId, e.message); return false; }
-}
-
-// ===== Lịch thi đấu =====
-async function initSchedulesPage() {
-  const tbody = document.getElementById("matches-table-body");
-  const filter = document.getElementById("filter-match-status");
-  const modal = document.getElementById("match-modal");
-  let editingId = null;
-
-  async function load() {
-    const matches = await matchApi("/matches");
-    const refs = await Promise.all(matches.map((m) => matchApi(`/matches/${m.matchId}/referees`)));
-    const rows = matches.map((m, i) => ({ m, refs: refs[i] }))
-      .filter(({ m }) => filter.value === "ALL" || m.matchStatus === filter.value);
-    tbody.innerHTML = rows.map(({ m, refs }) => `
-      <tr>
-        <td>${esc(m.matchCode)}</td>
-        <td>${esc(m.round?.roundName ?? m.round?.roundId)}</td>
-        <td>${esc(m.team1?.teamName)} vs ${esc(m.team2?.teamName)}</td>
-        <td>${esc((m.scheduledTime || "").replace("T", " "))}</td>
-        <td>${esc(m.venue || "—")}</td>
-        <td>BO${esc(m.bestOf)}</td>
-        <td>${esc(MATCH_STATUS_LABELS[m.matchStatus] || m.matchStatus)}</td>
-        <td>${refs.map((r) => esc(r.referee?.fullName)).join(", ") || "—"}</td>
-        <td>
-          ${MATCH_NEXT[m.matchStatus] ? `<button class="btn btn-outline btn-sm" data-act="next" data-id="${m.matchId}" data-to="${MATCH_NEXT[m.matchStatus]}">→ ${MATCH_STATUS_LABELS[MATCH_NEXT[m.matchStatus]]}</button>` : ""}
-          ${m.matchStatus !== "COMPLETED" ? `<button class="btn btn-outline btn-sm" data-act="edit" data-id="${m.matchId}">Sửa</button>` : ""}
-          <button class="btn btn-outline btn-sm" data-act="ref" data-id="${m.matchId}">+ Trọng tài</button>
-          ${m.matchStatus === "SCHEDULED" ? `<button class="btn btn-outline btn-sm" data-act="del" data-id="${m.matchId}">Xóa</button>` : ""}
-        </td>
-      </tr>`).join("") || `<tr><td colspan="9">Chưa có trận đấu.</td></tr>`;
-    tbody._matches = matches;
-  }
-
-  tbody.onclick = (e) => {
-    const b = e.target.closest("button[data-act]");
-    if (!b) return;
-    const id = Number(b.dataset.id);
-    if (b.dataset.act === "next")
-      runAction("match-error", () => matchApi(`/matches/${id}/status`, "PATCH", { status: b.dataset.to }), load);
-    if (b.dataset.act === "del" && confirm("Xóa trận đấu này?"))
-      runAction("match-error", () => matchApi(`/matches/${id}`, "DELETE"), load);
-    if (b.dataset.act === "ref") {
-      const rid = Number(prompt("Nhập ID tài khoản trọng tài:"));
-      if (rid) runAction("match-error", () => matchApi(`/matches/${id}/referees`, "POST", { refereeUserId: rid }), load);
+async function resultApi(path, method = 'GET', payload) {
+    let response;
+    try {
+        response = await fetch(`${API_BASE_URL}${path}`, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: payload === undefined ? undefined : JSON.stringify(payload)
+        });
+    } catch {
+        throw new Error('Không thể kết nối Backend. Hãy kiểm tra máy chủ tại cổng 8080.');
     }
-    if (b.dataset.act === "edit") {
-      const m = tbody._matches.find((x) => x.matchId === id);
-      editingId = id;
-      document.getElementById("match-modal-title").textContent = "Sửa trận đấu";
-      inp("code").value = m.matchCode; inp("round").value = m.round?.roundId;
-      inp("team1").value = m.team1?.teamId; inp("team2").value = m.team2?.teamId;
-      inp("time").value = (m.scheduledTime || "").slice(0, 16); inp("venue").value = m.venue || "";
-      inp("bo").value = m.bestOf;
-      modal.style.display = "flex";
+
+    if (response.status === 204) return null;
+    const text = await response.text();
+    let data = {};
+    if (text) {
+        try { data = JSON.parse(text); } catch { data = {}; }
     }
-  };
-
-  const inp = (n) => document.getElementById(`inp-match-${n}`);
-  const closeModal = () => { modal.style.display = "none"; editingId = null; document.getElementById("form-match").reset(); };
-  document.getElementById("btn-open-match-modal").onclick = () => {
-    document.getElementById("match-modal-title").textContent = "Tạo trận đấu";
-    modal.style.display = "flex";
-  };
-  document.getElementById("btn-close-match-modal").onclick = closeModal;
-  filter.onchange = load;
-
-  document.getElementById("form-match").onsubmit = (e) => {
-    e.preventDefault();
-    const body = {
-      matchCode: inp("code").value.trim(), roundId: Number(inp("round").value),
-      team1Id: Number(inp("team1").value), team2Id: Number(inp("team2").value),
-      scheduledTime: inp("time").value ? inp("time").value + ":00" : null,
-      venue: inp("venue").value.trim() || null, bestOf: Number(inp("bo").value)
-    };
-    const id = editingId;
-    runAction("match-error",
-      () => id ? matchApi(`/matches/${id}`, "PUT", body) : matchApi("/matches", "POST", body), load)
-      .then((ok) => { if (ok) closeModal(); });
-  };
-
-  await runAction("match-error", async () => {}, load);
+    if (!response.ok) throw new Error(data.error || data.message || `HTTP ${response.status}`);
+    return data;
 }
 
-// ===== Kết quả trận đấu =====
+function currentResultUserId() {
+    const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    const userId = user?.userId ?? user?.id;
+    if (userId) return Number(userId);
+    const enteredId = Number(window.prompt('Nhập ID tài khoản của bạn:'));
+    return Number.isInteger(enteredId) && enteredId > 0 ? enteredId : null;
+}
+
+function showResultError(message = '') {
+    const element = document.getElementById('result-error');
+    if (!element) return;
+    element.textContent = message;
+    element.style.display = message ? 'block' : 'none';
+}
+
 async function initResultsPage() {
-  const tbody = document.getElementById("results-table-body");
-  const filter = document.getElementById("filter-result-status");
+    const tbody = document.getElementById('results-table-body');
+    const filter = document.getElementById('filter-result-status');
+    if (!tbody || !filter) return;
 
-  async function load() {
-    const [matches, results] = await Promise.all([matchApi("/matches"), matchApi("/results")]);
-    const byMatch = new Map(results.map((r) => [r.match.matchId, r]));
-    const rows = matches
-      .filter((m) => !["SCHEDULED", "READY"].includes(m.matchStatus) || byMatch.has(m.matchId))
-      .map((m) => ({ m, r: byMatch.get(m.matchId) }))
-      .filter(({ r }) => filter.value === "ALL" || (filter.value === "NONE" ? !r : r?.resultStatus === filter.value));
-    tbody.innerHTML = rows.map(({ m, r }) => {
-      const st = r?.resultStatus;
-      const btn = (act, label) => `<button class="btn btn-outline btn-sm" data-act="${act}" data-id="${m.matchId}">${label}</button>`;
-      return `
-      <tr>
-        <td>${esc(m.matchCode)}</td>
-        <td>${esc(m.team1?.teamName)} vs ${esc(m.team2?.teamName)}</td>
-        <td>BO${esc(m.bestOf)}</td>
-        <td>${r ? `${esc(r.team1Score)} - ${esc(r.team2Score)}` : "—"}</td>
-        <td>${esc(r?.winner?.teamName || "—")}</td>
-        <td>${esc(st ? RESULT_LABELS[st] : "Chưa có")}</td>
-        <td>${esc(r?.note || "")}</td>
-        <td>
-          ${(!st || st === "DRAFT") ? btn("enter", "Nhập kết quả") : ""}
-          ${st === "DRAFT" ? btn("submit", "Gửi xác nhận") : ""}
-          ${st === "SUBMITTED" ? btn("confirm", "Xác nhận") : ""}
-          ${st === "CONFIRMED" ? btn("adjust", "Điều chỉnh") : ""}
-        </td>
-      </tr>`;
-    }).join("") || `<tr><td colspan="8">Chưa có trận nào cần kết quả.</td></tr>`;
-  }
+    async function load() {
+        const [matches, results] = await Promise.all([
+            resultApi('/matches'),
+            resultApi('/results')
+        ]);
+        const resultsByMatch = new Map((Array.isArray(results) ? results : [])
+            .map((result) => [result.match.matchId, result]));
 
-  function askScores() {
-    const s = prompt("Nhập tỷ số dạng 'đội1-đội2' (VD: 2-1):");
-    const mt = s && s.match(/^\s*(\d+)\s*-\s*(\d+)\s*$/);
-    if (!mt) { if (s !== null) showError("result-error", "Tỷ số không đúng định dạng"); return null; }
-    return { team1Score: Number(mt[1]), team2Score: Number(mt[2]) };
-  }
+        const rows = (Array.isArray(matches) ? matches : [])
+            .filter((match) => !['SCHEDULED', 'READY'].includes(match.matchStatus)
+                || resultsByMatch.has(match.matchId))
+            .map((match) => ({ match, result: resultsByMatch.get(match.matchId) }))
+            .filter(({ result }) => {
+                if (filter.value === 'ALL') return true;
+                if (filter.value === 'NONE') return !result;
+                return result?.resultStatus === filter.value;
+            });
 
-  tbody.onclick = (e) => {
-    const b = e.target.closest("button[data-act]");
-    if (!b) return;
-    const id = b.dataset.id, base = `/matches/${id}/result`;
-    const uid = currentUserId();
-    let fn;
-    if (b.dataset.act === "enter") { const sc = askScores(); if (!sc) return; fn = () => matchApi(base, "PUT", { ...sc, userId: uid }); }
-    if (b.dataset.act === "submit") fn = () => matchApi(`${base}/submit`, "POST", {});
-    if (b.dataset.act === "confirm") fn = () => matchApi(`${base}/confirm`, "POST", { userId: uid });
-    if (b.dataset.act === "adjust") {
-      const sc = askScores(); if (!sc) return;
-      const note = prompt("Lý do điều chỉnh (bắt buộc):");
-      if (!note) return;
-      fn = () => matchApi(`${base}/adjust`, "PATCH", { ...sc, userId: uid, note });
+        tbody.innerHTML = rows.map(({ match, result }) => {
+            const status = result?.resultStatus;
+            const button = (action, label) => `<button class="btn btn-outline btn-sm" type="button"
+                data-result-action="${action}" data-match-id="${match.matchId}">${label}</button>`;
+            const team1 = resultEscapeHtml(match.team1?.teamName || 'Đội 1');
+            const team2 = resultEscapeHtml(match.team2?.teamName || 'Đội 2');
+            return `
+                <tr>
+                    <td>${resultEscapeHtml(match.matchCode)}</td>
+                    <td>${team1} vs ${team2}</td>
+                    <td>BO${resultEscapeHtml(match.bestOf)}</td>
+                    <td>${result ? `${resultEscapeHtml(result.team1Score)} - ${resultEscapeHtml(result.team2Score)}` : '—'}</td>
+                    <td>${resultEscapeHtml(result?.winner?.teamName || '—')}</td>
+                    <td>${resultEscapeHtml(status ? RESULT_LABELS[status] || status : 'Chưa có')}</td>
+                    <td>${resultEscapeHtml(result?.note || '')}</td>
+                    <td>
+                        ${(!status || status === 'DRAFT') ? button('enter', 'Nhập kết quả') : ''}
+                        ${status === 'DRAFT' ? button('submit', 'Gửi xác nhận') : ''}
+                        ${status === 'SUBMITTED' ? button('confirm', 'Xác nhận') : ''}
+                        ${status === 'CONFIRMED' ? button('adjust', 'Điều chỉnh') : ''}
+                    </td>
+                </tr>`;
+        }).join('') || '<tr><td colspan="8">Chưa có trận nào cần kết quả.</td></tr>';
     }
-    runAction("result-error", fn, load);
-  };
-  filter.onchange = load;
-  await runAction("result-error", async () => {}, load);
+
+    function askScores() {
+        const input = window.prompt("Nhập tỷ số dạng 'đội1-đội2' (VD: 2-1):");
+        const match = input && input.match(/^\s*(\d+)\s*-\s*(\d+)\s*$/);
+        if (!match) {
+            if (input !== null) showResultError('Tỷ số không đúng định dạng.');
+            return null;
+        }
+        return { team1Score: Number(match[1]), team2Score: Number(match[2]) };
+    }
+
+    tbody.addEventListener('click', async (event) => {
+        const button = event.target.closest('button[data-result-action]');
+        if (!button) return;
+
+        const matchId = button.dataset.matchId;
+        const basePath = `/matches/${matchId}/result`;
+        const action = button.dataset.resultAction;
+        const needsUserId = ['enter', 'confirm', 'adjust'].includes(action);
+        const userId = needsUserId ? currentResultUserId() : null;
+        if (needsUserId && !userId) return;
+
+        try {
+            showResultError('');
+            if (action === 'enter') {
+                const scores = askScores();
+                if (!scores) return;
+                await resultApi(basePath, 'PUT', { ...scores, userId });
+            } else if (action === 'submit') {
+                await resultApi(`${basePath}/submit`, 'POST', {});
+            } else if (action === 'confirm') {
+                await resultApi(`${basePath}/confirm`, 'POST', { userId });
+            } else if (action === 'adjust') {
+                const scores = askScores();
+                if (!scores) return;
+                const note = window.prompt('Lý do điều chỉnh (bắt buộc):');
+                if (!note || !note.trim()) return;
+                await resultApi(`${basePath}/adjust`, 'PATCH', { ...scores, userId, note: note.trim() });
+            }
+            await load();
+        } catch (error) {
+            showResultError(error.message);
+        }
+    });
+
+    filter.addEventListener('change', async () => {
+        try {
+            showResultError('');
+            await load();
+        } catch (error) {
+            showResultError(error.message);
+        }
+    });
+
+    try {
+        showResultError('');
+        await load();
+    } catch (error) {
+        showResultError(error.message);
+        tbody.innerHTML = '<tr><td colspan="8">Không thể tải dữ liệu kết quả.</td></tr>';
+    }
 }
 
-const _prevInitPage = window.initPage;
+// Gắn phần kết quả vào bộ điều phối chung mà không can thiệp trang khác.
+const previousPageInitializerForResults = window.initPage;
 window.initPage = async function (pageName) {
-  await _prevInitPage(pageName);
-  if (pageName === "schedules") await initSchedulesPage();
-  if (pageName === "results") await initResultsPage();
+    if (typeof previousPageInitializerForResults === 'function') {
+        await previousPageInitializerForResults(pageName);
+    }
+    if (pageName === 'results') {
+        await initResultsPage();
+    }
 };

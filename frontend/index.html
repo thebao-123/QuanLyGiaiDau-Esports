@@ -7,156 +7,158 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
- <link rel="stylesheet" href="css/mainframe.css" />
-<link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/mainframe.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/schedules.css" />
 </head>
 <body>
-  <div class="app-shell">
-    <!-- 1. SIDEBAR TRÁI -->
-    <aside class="sidebar">
-      <div class="sidebar-brand">
-        <div class="brand-icon">🏆</div>
-        <div class="brand-text">
-          <span class="brand-title">ESPORTS</span>
-          <span class="brand-sub">MANAGER</span>
-        </div>
+<div class="app-shell">
+  <!-- 1. SIDEBAR TRÁI -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">🏆</div>
+      <div class="brand-text">
+        <span class="brand-title">ESPORTS</span>
+        <span class="brand-sub">MANAGER</span>
       </div>
+    </div>
 
-      <div class="sidebar-section-label">KHÔNG GIAN QUẢN TRỊ</div>
-      <nav class="sidebar-nav" id="sidebarNav">
-        <a href="#dashboard" class="nav-item active" data-page="dashboard">
-          <span class="nav-icon">⊞</span>
-          <span>TỔNG QUAN</span>
-        </a>
-        <a href="#tournaments" class="nav-item" data-page="tournaments">
-          <span class="nav-icon">🏆</span>
-          <span>GIẢI ĐẤU</span>
-        </a>
-        <a href="#teams" class="nav-item" data-page="teams">
-          <span class="nav-icon">👥</span>
-          <span>ĐỘI TUYỂN</span>
-        </a>
-        <a href="#schedules" class="nav-item" data-page="schedules">
-          <span class="nav-icon">📅</span>
-          <span>LỊCH THI ĐẤU</span>
-        </a>
-        <a href="#results" class="nav-item" data-page="results">
-          <span class="nav-icon">📊</span>
-          <span>KẾT QUẢ</span>
-        </a>
-        <a href="#accounts" class="nav-item" data-page="accounts">
+    <div class="sidebar-section-label">KHÔNG GIAN QUẢN TRỊ</div>
+    <nav class="sidebar-nav" id="sidebarNav">
+      <a href="#dashboard" class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">⊞</span>
+        <span>TỔNG QUAN</span>
+      </a>
+      <a href="#tournaments" class="nav-item" data-page="tournaments">
+        <span class="nav-icon">🏆</span>
+        <span>GIẢI ĐẤU</span>
+      </a>
+      <a href="#teams" class="nav-item" data-page="teams">
+        <span class="nav-icon">👥</span>
+        <span>ĐỘI TUYỂN</span>
+      </a>
+      <a href="#schedules" class="nav-item" data-page="schedules">
+        <span class="nav-icon">📅</span>
+        <span>LỊCH THI ĐẤU</span>
+      </a>
+      <a href="#results" class="nav-item" data-page="results">
+        <span class="nav-icon">📊</span>
+        <span>KẾT QUẢ</span>
+      </a>
+      <a href="#accounts" class="nav-item" data-page="accounts">
         <span class="nav-icon">👤</span>
         <span>TÀI KHOẢN</span>
       </a>
-      </nav>
+    </nav>
 
-      <!-- Khu vực cố định phía dưới Sidebar -->
-      <div class="sidebar-footer">
-        <div class="season-card">
-          <span class="season-label">MÙA GIẢI HIỆN TẠI</span>
-          <strong class="season-name">CKTG 2026</strong>
-          <span class="status-pill live">• Đang diễn ra</span>
-        </div>
-
-        <a href="#help" class="help-link">
-          <span>?</span> Trung tâm trợ giúp
-        </a>
-
-        <div class="role-box">
-          <div class="role-icon">🛡️</div>
-          <div>
-            <div class="role-name">Quản trị viên</div>
-            <div class="role-desc">Toàn quyền truy cập</div>
-          </div>
-        </div>
+    <!-- Khu vực cố định phía dưới Sidebar -->
+    <div class="sidebar-footer">
+      <div class="season-card">
+        <span class="season-label">MÙA GIẢI HIỆN TẠI</span>
+        <strong class="season-name">CKTG 2026</strong>
+        <span class="status-pill live">• Đang diễn ra</span>
       </div>
-    </aside>
 
-    <!-- 2. KHỐI PHẢI: HEADER + MAIN CONTENT -->
-    <div class="main-wrapper">
-      <header class="topbar">
-        <div class="breadcrumb">
-          <span class="crumb-root">Không gian làm việc</span>
-          <span class="crumb-sep">/</span>
-          <span class="crumb-current" id="breadcrumbCurrent">Tổng quan</span>
-        </div>
+      <a href="#help" class="help-link">
+        <span>?</span> Trung tâm trợ giúp
+      </a>
 
-        <div class="topbar-actions">
-          <div class="search-box">
-            <span class="search-icon">🔍</span>
-            <input type="text" placeholder="Tìm kiếm nhanh..." />
-          </div>
-
-          <button class="icon-btn" title="Thông báo">
-            🔔<span class="notif-dot"></span>
-          </button>
-
-          <div class="topbar-divider"></div>
-
-          <div class="user-profile">
-            <div class="user-avatar">🛡️</div>
-            <div class="user-meta">
-              <span class="user-name">Admin</span>
-              <span class="user-role">Quản trị hệ thống</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main class="main-content" id="mainContent">
-        <div class="page-header">
-          <div>
-            <div class="page-eyebrow" id="pageEyebrow">TỔNG QUAN</div>
-            <h1 class="page-title" id="pageTitle">Dashboard</h1>
-            <p class="page-subtitle" id="pageSubtitle">Theo dõi giải đấu, trận đấu và đội tuyển tại một nơi.</p>
-          </div>
-          <div class="page-actions" id="pageActions"></div>
-        </div>
-
-        <section class="page-body" id="pageBody">
-          <div class="placeholder-box">
-            Khung Main Frame đã sẵn sàng — Chèn nội dung từng trang vào đây.
-          </div>
-        </section>
-
-        <footer class="main-footer">
-          <span>ESPORTS MANAGER / TRANG QUẢN TRỊ</span>
-          <span>Mùa giải 2026</span>
-        </footer>
-      </main>
-    </div>
-  </div>
-
-  <!-- 3. KHUNG MODAL DÙNG CHUNG -->
-  <div class="modal-backdrop" id="modalCreateTournament" aria-hidden="true">
-    <div class="modal-card">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <div class="modal-icon">🏆</div>
-          <div>
-            <h3>Thêm mới giải đấu</h3>
-            <p>Thiết lập thông tin cơ bản cho giải đấu mới.</p>
-          </div>
-        </div>
-        <button class="modal-close" onclick="closeModal('modalCreateTournament')">✕</button>
-      </div>
-      <div class="modal-body">
-        <label class="form-label">Tên giải đấu *</label>
-        <input type="text" class="form-input" placeholder="Nhập tên giải đấu" />
-      </div>
-      <div class="modal-footer">
-        <span class="required-note">* Thông tin bắt buộc</span>
-        <div class="modal-buttons">
-          <button class="btn btn-secondary" onclick="closeModal('modalCreateTournament')">Hủy</button>
-          <button class="btn btn-primary">Tạo giải đấu</button>
+      <div class="role-box">
+        <div class="role-icon">🛡️</div>
+        <div>
+          <div class="role-name">Quản trị viên</div>
+          <div class="role-desc">Toàn quyền truy cập</div>
         </div>
       </div>
     </div>
+  </aside>
+
+  <!-- 2. KHỐI PHẢI: HEADER + MAIN CONTENT -->
+  <div class="main-wrapper">
+    <header class="topbar">
+      <div class="breadcrumb">
+        <span class="crumb-root">Không gian làm việc</span>
+        <span class="crumb-sep">/</span>
+        <span class="crumb-current" id="breadcrumbCurrent">Tổng quan</span>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Tìm kiếm nhanh..." />
+        </div>
+
+        <button class="icon-btn" title="Thông báo">
+          🔔<span class="notif-dot"></span>
+        </button>
+
+        <div class="topbar-divider"></div>
+
+        <div class="user-profile">
+          <div class="user-avatar">🛡️</div>
+          <div class="user-meta">
+            <span class="user-name">Admin</span>
+            <span class="user-role">Quản trị hệ thống</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content" id="mainContent">
+      <div class="page-header">
+        <div>
+          <div class="page-eyebrow" id="pageEyebrow">TỔNG QUAN</div>
+          <h1 class="page-title" id="pageTitle">Dashboard</h1>
+          <p class="page-subtitle" id="pageSubtitle">Theo dõi giải đấu, trận đấu và đội tuyển tại một nơi.</p>
+        </div>
+        <div class="page-actions" id="pageActions"></div>
+      </div>
+
+      <section class="page-body" id="pageBody">
+        <div class="placeholder-box">
+          Khung Main Frame đã sẵn sàng — Chèn nội dung từng trang vào đây.
+        </div>
+      </section>
+
+      <footer class="main-footer">
+        <span>ESPORTS MANAGER / TRANG QUẢN TRỊ</span>
+        <span>Mùa giải 2026</span>
+      </footer>
+    </main>
   </div>
- <script src="js/mock-data.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/matches.js"></script>
-  <script src="js/mainframe.js"></script>
+</div>
+
+<!-- 3. KHUNG MODAL DÙNG CHUNG -->
+<div class="modal-backdrop" id="modalCreateTournament" aria-hidden="true">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <div class="modal-icon">🏆</div>
+        <div>
+          <h3>Thêm mới giải đấu</h3>
+          <p>Thiết lập thông tin cơ bản cho giải đấu mới.</p>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalCreateTournament')">✕</button>
+    </div>
+    <div class="modal-body">
+      <label class="form-label">Tên giải đấu *</label>
+      <input type="text" class="form-input" placeholder="Nhập tên giải đấu" />
+    </div>
+    <div class="modal-footer">
+      <span class="required-note">* Thông tin bắt buộc</span>
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" onclick="closeModal('modalCreateTournament')">Hủy</button>
+        <button class="btn btn-primary">Tạo giải đấu</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="js/mock-data.js"></script>
+<script src="js/api.js?v=20261123-week-view-02"></script>
+<script src="js/app.js"></script>
+<script src="js/matches.js"></script>
+<script src="js/mainframe.js?v=20261123-week-view-02"></script>
+<script src="js/schedules.js?v=20261123-week-view-02"></script>
 </body>
 </html>
