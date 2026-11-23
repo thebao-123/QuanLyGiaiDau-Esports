@@ -332,3 +332,44 @@ INSERT INTO participation_applications (application_id, tournament_id, team_id, 
 (3, 1, 3, 'APPROVED', '2026-09-07 14:20:00', 2,    '2026-09-08 10:00:00', 'Đủ điều kiện tham dự Vòng Thụy Sĩ'),
 (4, 1, 4, 'APPROVED', '2026-09-10 16:45:00', 2,    '2026-09-11 11:00:00', 'Vượt qua Vòng Khởi Động'),
 (5, 5, 5, 'PENDING',  '2026-11-15 09:00:00', NULL, NULL,                  'Đang chờ Ban tổ chức kiểm tra danh sách tuyển thủ');
+--
+-- Phan he Quan ly Tran dau va Ket qua
+--
+CREATE TABLE IF NOT EXISTS `matches` (
+  `match_id` bigint NOT NULL AUTO_INCREMENT,
+  `round_id` bigint NOT NULL,
+  `team1_id` bigint NOT NULL,
+  `team2_id` bigint NOT NULL,
+  `match_code` varchar(30) NOT NULL,
+  `scheduled_time` datetime DEFAULT NULL,
+  `venue` varchar(100) DEFAULT NULL,
+  `best_of` int NOT NULL DEFAULT 3,
+  `match_status` varchar(30) NOT NULL DEFAULT 'SCHEDULED',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`match_id`),
+  UNIQUE KEY `uk_match_code` (`match_code`),
+  CONSTRAINT `chk_best_of` CHECK (`best_of` IN (1,3,5)),
+  CONSTRAINT `chk_diff_teams` CHECK (`team1_id` <> `team2_id`)
+);
+
+CREATE TABLE IF NOT EXISTS `match_results` (
+  `result_id` bigint NOT NULL AUTO_INCREMENT,
+  `match_id` bigint NOT NULL,
+  `team1_score` int NOT NULL,
+  `team2_score` int NOT NULL,
+  `winner_team_id` bigint DEFAULT NULL,
+  `result_status` varchar(20) NOT NULL DEFAULT 'DRAFT',
+  `entered_by` bigint DEFAULT NULL,
+  `confirmed_by` bigint DEFAULT NULL,
+  `confirmed_at` datetime DEFAULT NULL,
+  `note` varchar(500) DEFAULT NULL,
+  PRIMARY KEY (`result_id`),
+  UNIQUE KEY `uk_result_match` (`match_id`)
+);
+
+CREATE TABLE IF NOT EXISTS `match_referees` (
+  `match_id` bigint NOT NULL,
+  `referee_user_id` bigint NOT NULL,
+  `assigned_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`match_id`,`referee_user_id`)
+);
