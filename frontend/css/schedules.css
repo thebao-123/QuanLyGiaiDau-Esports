@@ -69,6 +69,7 @@
 }
 .schedule-month-control { min-width:154px; }
 .schedule-month-trigger { display:flex; flex:1 1 auto; align-items:center; width:100%; min-width:0; height:38px; padding:0 22px 0 0; border:0; background:transparent; color:#1e293b; font:600 12px Inter,sans-serif; text-align:left; font-variant-numeric:tabular-nums; cursor:pointer; }
+.schedule-month-trigger.is-empty { color:#94a3b8; font-weight:500; }
 .schedule-month-trigger:focus-visible { outline:2px solid rgba(37,99,235,.35); outline-offset:2px; border-radius:4px; }
 .schedule-month-popover { position:absolute; top:calc(100% + 9px); left:0; z-index:1300; width:252px; padding:13px; border:1px solid #e2e8f0; border-radius:12px; background:#fff; box-shadow:0 16px 36px rgba(15,23,42,.16),0 3px 8px rgba(15,23,42,.05); animation:schedule-month-popover-in .14s ease-out; }
 .schedule-month-popover[hidden] { display:none !important; }
@@ -82,6 +83,10 @@
 .schedule-month-grid button:hover { border-color:#bfdbfe; background:#eff6ff; color:#1d4ed8; }
 .schedule-month-grid button.active { border-color:#172554; background:#172554; color:#fff; box-shadow:0 2px 5px rgba(23,37,84,.16); }
 .schedule-month-grid button:focus-visible, .schedule-month-year-button:focus-visible { outline:2px solid rgba(37,99,235,.38); outline-offset:2px; }
+.schedule-month-popover-footer { margin-top:11px; padding-top:10px; border-top:1px solid #edf1f6; }
+.schedule-month-clear { width:100%; min-height:32px; padding:6px 8px; border:0; border-radius:7px; background:#f8fafc; color:#475569; font:600 11px Inter,sans-serif; text-align:center; cursor:pointer; transition:background .15s ease,color .15s ease; }
+.schedule-month-clear:hover { background:#eff6ff; color:#1d4ed8; }
+.schedule-month-clear:focus-visible { outline:2px solid rgba(37,99,235,.38); outline-offset:2px; }
 .schedule-toolbar-actions { margin-left:auto; }
 .schedule-view-switch { display:inline-flex; gap:2px; padding:3px; border:1px solid #e8edf5; border-radius:8px; background:#f8fafc; }
 .schedule-view-button { min-width:82px; padding:7px 12px; border:0; border-radius:6px; background:transparent; color:#64748b; font:600 11px Inter,sans-serif; cursor:pointer; }

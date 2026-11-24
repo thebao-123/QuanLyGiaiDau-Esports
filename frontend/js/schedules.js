@@ -57,10 +57,6 @@ async function initSchedulesPage() {
         return `${year}-${month}-${day}`;
     }
 
-    function monthKey(value) {
-        return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}`;
-    }
-
     function parseDateKey(value) {
         const [year, month, day] = String(value).split('-').map(Number);
         return new Date(year, month - 1, day);
@@ -341,13 +337,16 @@ async function initSchedulesPage() {
     }
 
     function renderMonthPicker() {
-        const selectedValue = elements.monthInput.value || monthKey(state.selectedDate);
-        const [selectedYear, selectedMonth] = selectedValue.split('-');
-        elements.monthLabel.textContent = `${selectedMonth}/${selectedYear}`;
+        // Ô tháng để trống nghĩa là không áp dụng bộ lọc thời gian.
+        const selectedValue = elements.monthInput.value;
+        const [selectedYear, selectedMonth] = selectedValue ? selectedValue.split('-') : ['', ''];
+        elements.monthLabel.textContent = selectedValue ? `${selectedMonth}/${selectedYear}` : 'Chọn tháng';
+        elements.monthTrigger.classList.toggle('is-empty', !selectedValue);
         elements.monthYear.textContent = String(state.monthPickerYear);
 
         elements.monthGrid.querySelectorAll('[data-month]').forEach((button) => {
-            const isSelected = Number(selectedYear) === state.monthPickerYear
+            const isSelected = Boolean(selectedValue)
+                && Number(selectedYear) === state.monthPickerYear
                 && button.dataset.month === selectedMonth;
             button.classList.toggle('active', isSelected);
             button.setAttribute('aria-pressed', String(isSelected));
@@ -356,8 +355,10 @@ async function initSchedulesPage() {
     }
 
     function openMonthPicker() {
-        const currentValue = elements.monthInput.value || monthKey(state.selectedDate);
-        state.monthPickerYear = Number(currentValue.slice(0, 4));
+        // Nếu chưa chọn tháng, mở lịch tại năm hiện tại nhưng không tự chọn tháng nào.
+        state.monthPickerYear = elements.monthInput.value
+            ? Number(elements.monthInput.value.slice(0, 4))
+            : new Date().getFullYear();
         renderMonthPicker();
         elements.monthPopover.hidden = false;
         elements.monthTrigger.setAttribute('aria-expanded', 'true');
@@ -613,6 +614,7 @@ async function initSchedulesPage() {
         const stageId = elements.stageFilter.value;
         const roundId = elements.roundFilter.value;
         const status = elements.matchStatusFilter.value;
+        const selectedMonth = elements.monthInput.value;
         const keyword = elements.search.value.trim().toLocaleLowerCase('vi');
 
         return state.matches.filter((match) => {
@@ -620,6 +622,9 @@ async function initSchedulesPage() {
             if (stageId !== 'ALL' && String(match.stageId) !== stageId) return false;
             if (roundId !== 'ALL' && String(match.roundId) !== roundId) return false;
             if (status !== 'ALL' && normalize(match.matchStatus) !== status) return false;
+            // Chỉ lọc theo tháng khi người dùng chủ động chọn một tháng.
+            // Trận chưa được xếp lịch không thuộc tháng nào nên sẽ không xuất hiện khi lọc tháng.
+            if (selectedMonth && String(match.scheduledTime || '').slice(0, 7) !== selectedMonth) return false;
             if (keyword) {
                 const searchText = [
                     match.matchCode, match.tournamentName, match.stageName, match.roundName,
@@ -643,8 +648,6 @@ async function initSchedulesPage() {
         const end = addDays(start, 6);
         const dateFormatter = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit' });
         elements.weekLabel.textContent = `${dateFormatter.format(start)} – ${dateFormatter.format(end)} · ${start.getFullYear() === end.getFullYear() ? end.getFullYear() : `${start.getFullYear()} – ${end.getFullYear()}`}`;
-        elements.monthInput.value = monthKey(state.selectedDate);
-
         elements.weekStrip.innerHTML = Array.from({ length: 7 }, (_, index) => {
             const day = addDays(start, index);
             const key = dateKey(day);
@@ -700,12 +703,17 @@ async function initSchedulesPage() {
 
         elements.weekControls.hidden = !isWeek;
         elements.weekStrip.hidden = !isWeek;
+        const selectedMonth = elements.monthInput.value;
+        const monthParts = selectedMonth ? selectedMonth.split('-') : null;
+        const monthHeading = monthParts ? `Trận đấu tháng ${monthParts[1]}/${monthParts[0]}` : 'Tất cả trận đấu';
         elements.resultHeading.textContent = isWeek
             ? new Intl.DateTimeFormat('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' }).format(state.selectedDate).replace(/^./, (letter) => letter.toLocaleUpperCase('vi'))
-            : 'Tất cả trận đấu';
+            : monthHeading;
         elements.resultSubheading.textContent = isWeek
             ? 'Các trận đấu được lên lịch trong ngày đã chọn.'
-            : 'Danh sách tất cả trận đấu, sắp xếp theo thời gian từ sớm đến muộn.';
+            : selectedMonth
+                ? 'Chỉ hiển thị các trận có lịch trong tháng đã chọn.'
+                : 'Danh sách tất cả trận đấu, không giới hạn thời gian, sắp xếp từ sớm đến muộn.';
         elements.timezoneLabel.textContent = isWeek ? 'Giờ Việt Nam (GMT+7)' : 'Tất cả thời gian theo GMT+7';
         elements.matchResultCount.textContent = `${visibleMatches.length} trận đấu`;
         elements.visibleMatchCount.textContent = visibleMatches.length;
@@ -1694,9 +1702,9 @@ async function initSchedulesPage() {
         if (action === 'delete-round') deleteRound(button.dataset.roundId);
     }
 
-    // Tháng mặc định bám theo ngày hiện tại; bộ chọn hiển thị tháng bằng số.
-    elements.monthInput.value = monthKey(state.selectedDate);
-    state.monthPickerYear = state.selectedDate.getFullYear();
+    // Không tự lọc theo tháng khi vừa mở trang; mặc định hiển thị tất cả trận đấu.
+    elements.monthInput.value = '';
+    state.monthPickerYear = new Date().getFullYear();
     renderMonthPicker();
 
     // Sự kiện bộ lọc.
@@ -1742,17 +1750,29 @@ async function initSchedulesPage() {
         const monthButton = event.target.closest('[data-month]');
         if (monthButton) chooseScheduleMonth(Number(monthButton.dataset.month));
     });
+    root.querySelector('#scheduleMonthClear').addEventListener('click', () => {
+        elements.monthInput.value = '';
+        elements.monthInput.dispatchEvent(new Event('change', { bubbles: true }));
+        closeMonthPicker(true);
+    });
     root.addEventListener('click', (event) => {
         if (!elements.monthPicker.contains(event.target)) closeMonthPicker();
     });
     elements.monthInput.addEventListener('change', () => {
-        if (!elements.monthInput.value) return;
-        const [year, month] = elements.monthInput.value.split('-').map(Number);
-        state.selectedDate = new Date(year, month - 1, 1);
-        state.weekStart = getWeekStart(state.selectedDate);
-        state.monthPickerYear = year;
+        if (elements.monthInput.value) {
+            const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(elements.monthInput.value);
+            if (!match) {
+                elements.monthInput.value = '';
+            } else {
+                const year = Number(match[1]);
+                const month = Number(match[2]);
+                state.selectedDate = new Date(year, month - 1, 1);
+                state.weekStart = getWeekStart(state.selectedDate);
+                state.monthPickerYear = year;
+            }
+        }
         renderMonthPicker();
-        if (state.viewMode === 'week') renderMatchTable();
+        renderMatchTable();
     });
     elements.weekStrip.addEventListener('click', (event) => {
         const button = event.target.closest('[data-schedule-date]');
@@ -1774,6 +1794,8 @@ async function initSchedulesPage() {
         populateRoundFilterOptions('ALL');
         elements.matchStatusFilter.value = 'ALL';
         elements.dateFilter.value = '';
+        elements.monthInput.value = '';
+        renderMonthPicker();
         renderMatchTable();
         renderStageList();
     });
