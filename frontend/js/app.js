@@ -100,7 +100,7 @@ function normalizeUser(u) {
     id: u.userId ?? u.user_id ?? u.id ?? "",
     fullName: u.fullName ?? u.full_name ?? u.name ?? "Chưa cập nhật",
     email: u.email ?? "",
-    phone: u.phone ?? "",
+    phone: u.phone && u.phone !== "—" ? u.phone : "",
     role: (u.role ?? "VIEWER").toUpperCase(),
     status: (u.accountStatus ?? u.account_status ?? "ACTIVE").toUpperCase()
   };
@@ -286,7 +286,7 @@ async function initAccountsPage() {
             <td>${u.email}</td>
             <td>${u.phone || "—"}</td>
             <td>
-              <select class="form-select" style="padding:5px 8px; font-size:12px; width:165px;" onchange="changeUserRole(${u.id}, this.value)">
+              <select class="form-select" style="padding:5px 8px; font-size:12px; width:165px;" onchange="changeUserRole(${u.id}, this.value, this)">
                 ${Object.entries(ROLE_LABELS)
                   .map(
                     ([key, label]) =>
@@ -307,11 +307,15 @@ async function initAccountsPage() {
       .join("");
   }
 
-  window.changeUserRole = async function (userId, newRole) {
-    const target = allUsers.find((u) => u.id === userId);
+  window.changeUserRole = async function (userId, newRole, selectEl) {
+    const target = allUsers.find((u) => Number(u.id) === Number(userId));
     if (!target) return;
 
-    if (typeof ApiService.updateUser === "function") {
+    const oldRole = target.role;
+    if (oldRole === newRole) return;
+
+    if (selectEl) selectEl.disabled = true;
+    try {
       await ApiService.updateUser(userId, {
         fullName: target.fullName,
         email: target.email,
@@ -319,25 +323,36 @@ async function initAccountsPage() {
         role: newRole,
         accountStatus: target.status
       });
+
+      target.role = newRole;
+      updateUserKpis();
+
+      // Đồng bộ ngay nếu đang đổi vai trò của chính tài khoản đang đăng nhập
+      const currentUser = getCurrentUser();
+      if (currentUser && Number(currentUser.userId) === Number(userId)) {
+        currentUser.role = newRole;
+        localStorage.setItem("currentUser", JSON.stringify(currentUser));
+      }
+    } catch (err) {
+      if (selectEl) selectEl.value = oldRole;
+    } finally {
+      if (selectEl) selectEl.disabled = false;
     }
-    target.role = newRole;
-    updateUserKpis();
   };
 
   window.toggleUserStatus = async function (userId) {
-    const target = allUsers.find((u) => u.id === userId);
+    const target = allUsers.find((u) => Number(u.id) === Number(userId));
     if (!target) return;
 
     const nextStatus = target.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
-    if (typeof ApiService.updateUser === "function") {
-      await ApiService.updateUser(userId, {
-        fullName: target.fullName,
-        email: target.email,
-        phone: target.phone || null,
-        role: target.role,
-        accountStatus: nextStatus
-      });
-    }
+    await ApiService.updateUser(userId, {
+      fullName: target.fullName,
+      email: target.email,
+      phone: target.phone || null,
+      role: target.role,
+      accountStatus: nextStatus
+    });
+
     target.status = nextStatus;
     renderUsersTable();
   };
@@ -385,7 +400,6 @@ async function initTeamsPage() {
   const allUsers = rawUsers.map(normalizeUser);
   const tournaments = rawTournaments.map(normalizeTournament);
 
-  // Tải đội hình thật từ MySQL cho từng đội
   const rostersList =
     typeof ApiService.getTeamRoster === "function"
       ? await Promise.all(rawTeams.map((t) => ApiService.getTeamRoster(t.teamId ?? t.id)))
@@ -394,7 +408,6 @@ async function initTeamsPage() {
   let allTeams = rawTeams.map((t, idx) => normalizeTeam(t, idx, rostersList[idx]));
   let selectedTeamId = null;
 
-  // Tải đơn đăng ký tham dự thật từ MySQL theo từng giải đấu
   let applications = [];
   if (typeof ApiService.getTournamentApplications === "function") {
     const appsByTournament = await Promise.all(
@@ -624,3 +637,61 @@ window.initPage = async function (pageName) {
   if (pageName === "teams") await initTeamsPage();
   if (pageName === "accounts") await initAccountsPage();
 };
+// ===== KIỂM SOÁT CHẾ ĐỘ CHỈ XEM CHO TÀI KHOẢN KHÁCH (VIEWER) =====
+function isViewerAccount() {
+  const user = getCurrentUser();
+  return user && (user.role || "").toUpperCase() === "VIEWER";
+}
+
+function applyViewerReadOnlyMode() {
+  if (!isViewerAccount()) return;
+
+  // 1. Hiển thị thanh thông báo chế độ Khách ở đầu vùng nội dung
+  const mainContainer = document.querySelector(".main-content") || document.body;
+  if (mainContainer && !document.getElementById("viewer-readonly-banner")) {
+    const banner = document.createElement("div");
+    banner.id = "viewer-readonly-banner";
+    banner.style.cssText =
+      "background:#eff6ff; border-bottom:1px solid #bfdbfe; color:#1e40af; padding:10px 24px; font-size:13px; font-weight:500; display:flex; align-items:center; justify-content:space-between;";
+    banner.innerHTML = `
+      <span>👀 <strong>Chế độ Khách (Chỉ xem):</strong> Bạn đang đăng nhập với quyền Khán giả. Mọi thao tác thêm, sửa, xóa và duyệt dữ liệu đều bị khóa.</span>
+      <a href="login.html" style="color:#1d4ed8; font-weight:600; text-decoration:underline;">Đổi tài khoản</a>
+    `;
+    mainContainer.insertBefore(banner, mainContainer.firstChild);
+  }
+
+  // 2. Ẩn toàn bộ nút thêm/sửa/xóa/duyệt/khóa/nhập kết quả (giữ lại nút Làm mới, Đội hình)
+  const MUTATION_KEYWORDS = [
+    "+ thêm", "+ tạo", "+ cấp", "+ đăng ký", "thêm giai đoạn", "tạo lịch",
+    "duyệt", "từ chối", "khóa", "mở khóa", "nhập tỷ số", "nhập kết quả",
+    "xác nhận", "cập nhật", "lưu", "xóa", "sửa"
+  ];
+
+  document.querySelectorAll("button").forEach((btn) => {
+    const text = (btn.textContent || "").toLowerCase().trim();
+    const id = (btn.id || "").toLowerCase();
+    const isOpenModalBtn = id.startsWith("btn-open-");
+    const isMutationText = MUTATION_KEYWORDS.some((kw) => text.includes(kw));
+
+    if (isOpenModalBtn || isMutationText) {
+      btn.style.display = "none";
+    }
+  });
+
+  // 3. Khóa các ô chọn vai trò trong bảng Tài khoản
+  document.querySelectorAll("table select").forEach((sel) => {
+    sel.disabled = true;
+  });
+
+  // 4. Ẩn form thêm tuyển thủ trong modal Đội hình (vẫn cho xem danh sách)
+  const addPlayerForm = document.getElementById("form-add-player");
+  if (addPlayerForm) {
+    addPlayerForm.style.display = "none";
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  applyViewerReadOnlyMode();
+  const observer = new MutationObserver(() => applyViewerReadOnlyMode());
+  observer.observe(document.body, { childList: true, subtree: true });
+});

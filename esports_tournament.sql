@@ -857,3 +857,10 @@ SET start_date = '2027-06-15',
     end_date = '2027-08-25',
     tournament_status = 'DRAFT'
 WHERE tournament_id = 7; -- VCS đông 2027 (Sắp diễn ra)
+
+INSERT INTO users (full_name, email, password_hash, phone, role, account_status)
+SELECT 'Khách tham quan', 'guest@esports.vn',
+       '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+       '0901000011', 'VIEWER', 'ACTIVE'
+FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'guest@esports.vn');
