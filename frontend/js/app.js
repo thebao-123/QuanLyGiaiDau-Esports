@@ -15,6 +15,29 @@ const ROLE_LABELS = {
   VIEWER: "Khán giả"
 };
 
+const DEFAULT_ROSTERS_BY_TAG = {
+  T1: [
+    { ign: "Zeus", fullName: "Choi Woo-je", gameAccountId: "KR_ZEUS_001", role: "MAIN" },
+    { ign: "Oner", fullName: "Mun Hyeon-jun", gameAccountId: "KR_ONER_002", role: "MAIN" },
+    { ign: "Faker", fullName: "Lee Sang-hyeok", gameAccountId: "KR_FAKER_003", role: "MAIN" },
+    { ign: "Gumayusi", fullName: "Lee Min-hyeong", gameAccountId: "KR_GUMA_004", role: "MAIN" },
+    { ign: "Keria", fullName: "Ryu Min-seok", gameAccountId: "KR_KERIA_005", role: "MAIN" }
+  ],
+  BLG: [
+    { ign: "Bin", fullName: "Chen Ze-bin", gameAccountId: "CN_BIN_006", role: "MAIN" },
+    { ign: "Knight", fullName: "Zhuo Ding", gameAccountId: "CN_KNIGHT_007", role: "MAIN" }
+  ],
+  WBG: [
+    { ign: "Xiaohu", fullName: "Li Yuan-hao", gameAccountId: "CN_XIAOHU_008", role: "MAIN" }
+  ],
+  LR: [
+    { ign: "Thebausffs", fullName: "Simon Hofverberg", gameAccountId: "EU_BAUS_009", role: "MAIN" }
+  ],
+  GAM: [
+    { ign: "Levi", fullName: "Đỗ Duy Khánh", gameAccountId: "VN_LEVI_010", role: "MAIN" }
+  ]
+};
+
 function normalizeTournament(t) {
   return {
     id: t.tournamentId ?? t.tournament_id ?? t.id ?? "",
@@ -57,6 +80,22 @@ function normalizeUser(u) {
     phone: u.phone ?? "—",
     role: (u.role ?? "VIEWER").toUpperCase(),
     status: (u.accountStatus ?? u.account_status ?? "ACTIVE").toUpperCase()
+  };
+}
+
+function normalizeTeam(team, index) {
+  const tag = (team.teamTag ?? team.team_tag ?? team.tag ?? `TM${index + 1}`).toUpperCase();
+  const roster = Array.isArray(team.players)
+    ? team.players
+    : (DEFAULT_ROSTERS_BY_TAG[tag] ? [...DEFAULT_ROSTERS_BY_TAG[tag]] : []);
+
+  return {
+    id: team.teamId ?? team.team_id ?? team.id ?? index + 1,
+    tag,
+    name: team.teamName ?? team.team_name ?? team.name ?? "Đội tuyển mới",
+    country: team.country ?? team.region ?? "Việt Nam",
+    captain: team.captainName ?? team.captain ?? `Đội trưởng ${tag}`,
+    players: roster
   };
 }
 
@@ -274,9 +313,184 @@ async function initAccountsPage() {
   };
 }
 
+// ===== 4. KHỞI TẠO TRANG QUẢN LÝ ĐỘI TUYỂN =====
+async function initTeamsPage() {
+  const rawTeams = await ApiService.getTeams();
+  let allTeams = rawTeams.map((t, idx) => normalizeTeam(t, idx));
+  let selectedTeamId = null;
+
+  let applications = [
+    { appId: 101, teamTag: "T1", teamName: "T1", tournamentName: "CKTG 2026", appliedAt: "2026-10-12", status: "APPROVED" },
+    { appId: 102, teamTag: "BLG", teamName: "Bilibili Gaming", tournamentName: "CKTG 2026", appliedAt: "2026-10-13", status: "APPROVED" },
+    { appId: 103, teamTag: "GAM", teamName: "GAM Esports", tournamentName: "CKTG 2026", appliedAt: "2026-11-20", status: "PENDING" },
+    { appId: 104, teamTag: "LR", teamName: "Los Ratones", tournamentName: "MSI 2026", appliedAt: "2026-11-22", status: "PENDING" }
+  ];
+
+  const tbody = document.getElementById("teams-table-body");
+  const appBody = document.getElementById("applications-table-body");
+  const searchInput = document.getElementById("search-team");
+  const countrySelect = document.getElementById("filter-team-country");
+  const teamModal = document.getElementById("team-modal");
+  const rosterModal = document.getElementById("roster-modal");
+
+  function updateTeamKpis() {
+    const totalPlayers = allTeams.reduce((sum, t) => sum + t.players.length, 0);
+    const pendingApps = applications.filter((a) => a.status === "PENDING").length;
+    const countries = new Set(allTeams.map((t) => t.country)).size;
+
+    document.getElementById("kpi-total-teams").textContent = allTeams.length;
+    document.getElementById("kpi-total-players").textContent = totalPlayers;
+    document.getElementById("kpi-pending-apps").textContent = pendingApps;
+    document.getElementById("kpi-total-countries").textContent = countries;
+  }
+
+  function renderTeamsTable() {
+    updateTeamKpis();
+    const keyword = (searchInput.value || "").toLowerCase().trim();
+    const filterCountry = countrySelect.value;
+
+    const filtered = allTeams.filter((t) => {
+      const matchText = t.name.toLowerCase().includes(keyword) || t.tag.toLowerCase().includes(keyword);
+      const matchCountry = filterCountry === "ALL" || t.country === filterCountry;
+      return matchText && matchCountry;
+    });
+
+    tbody.innerHTML = filtered
+      .map(
+        (t) => `
+          <tr>
+            <td>#${t.id}</td>
+            <td><span class="badge badge-upcoming">[${t.tag}]</span></td>
+            <td style="font-weight:600;">${t.name}</td>
+            <td>${t.country}</td>
+            <td>${t.captain}</td>
+            <td>${t.players.length} tuyển thủ</td>
+            <td>
+              <button class="btn btn-outline btn-sm" onclick="openTeamRoster(${t.id})">Đội hình</button>
+            </td>
+          </tr>
+        `
+      )
+      .join("");
+  }
+
+  function renderApplicationsTable() {
+    updateTeamKpis();
+    appBody.innerHTML = applications
+      .map((app) => {
+        let badgeHtml = `<span class="badge badge-upcoming">Chờ duyệt</span>`;
+        if (app.status === "APPROVED") badgeHtml = `<span class="badge badge-live">● Đã duyệt</span>`;
+        if (app.status === "REJECTED") badgeHtml = `<span class="badge badge-danger">Từ chối</span>`;
+
+        const actionsHtml =
+          app.status === "PENDING"
+            ? `
+              <button class="btn btn-primary btn-sm" onclick="reviewApplication(${app.appId}, 'APPROVED')">Duyệt</button>
+              <button class="btn btn-outline btn-sm" onclick="reviewApplication(${app.appId}, 'REJECTED')">Từ chối</button>
+            `
+            : `<span style="font-size:12px; color:#64748b;">Đã xử lý</span>`;
+
+        return `
+          <tr>
+            <td>#${app.appId}</td>
+            <td style="font-weight:600;">[${app.teamTag}] ${app.teamName}</td>
+            <td>${app.tournamentName}</td>
+            <td>${app.appliedAt}</td>
+            <td>${badgeHtml}</td>
+            <td style="display:flex; gap:6px;">${actionsHtml}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  function renderRosterModalBody(team) {
+    document.getElementById("roster-modal-title").textContent = `Đội hình [${team.tag}] ${team.name}`;
+    const rosterBody = document.getElementById("roster-table-body");
+    if (!team.players.length) {
+      rosterBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#64748b;">Chưa có tuyển thủ nào trong đội.</td></tr>`;
+      return;
+    }
+    rosterBody.innerHTML = team.players
+      .map(
+        (p) => `
+          <tr>
+            <td style="font-weight:700;">${p.ign}</td>
+            <td>${p.fullName}</td>
+            <td><code>${p.gameAccountId}</code></td>
+            <td><span class="badge ${p.role === "MAIN" ? "badge-live" : "badge-done"}">${p.role === "MAIN" ? "Chính thức" : "Dự bị"}</span></td>
+          </tr>
+        `
+      )
+      .join("");
+  }
+
+  window.openTeamRoster = function (teamId) {
+    const team = allTeams.find((t) => t.id === teamId);
+    if (!team) return;
+    selectedTeamId = teamId;
+    renderRosterModalBody(team);
+    rosterModal.style.display = "flex";
+  };
+
+  window.reviewApplication = function (appId, newStatus) {
+    const app = applications.find((a) => a.appId === appId);
+    if (app) {
+      app.status = newStatus;
+      renderApplicationsTable();
+    }
+  };
+
+  renderTeamsTable();
+  renderApplicationsTable();
+  searchInput.addEventListener("input", renderTeamsTable);
+  countrySelect.addEventListener("change", renderTeamsTable);
+
+  const closeTeamModal = () => (teamModal.style.display = "none");
+  document.getElementById("btn-open-team-modal").onclick = () => (teamModal.style.display = "flex");
+  document.getElementById("btn-close-team-modal").onclick = closeTeamModal;
+  document.getElementById("btn-cancel-team-modal").onclick = closeTeamModal;
+
+  document.getElementById("form-create-team").onsubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      teamName: document.getElementById("inp-team-name").value.trim(),
+      teamTag: document.getElementById("inp-team-tag").value.trim().toUpperCase(),
+      country: document.getElementById("inp-team-country").value,
+      captainName: document.getElementById("inp-team-captain").value.trim(),
+      players: []
+    };
+
+    const created = await ApiService.createTeam(payload);
+    allTeams.unshift(normalizeTeam({ ...payload, ...created }, allTeams.length));
+    renderTeamsTable();
+    e.target.reset();
+    closeTeamModal();
+  };
+
+  document.getElementById("btn-close-roster-modal").onclick = () => (rosterModal.style.display = "none");
+  document.getElementById("form-add-player").onsubmit = (e) => {
+    e.preventDefault();
+    const team = allTeams.find((t) => t.id === selectedTeamId);
+    if (!team) return;
+
+    team.players.push({
+      ign: document.getElementById("inp-player-ign").value.trim(),
+      fullName: document.getElementById("inp-player-name").value.trim(),
+      gameAccountId: document.getElementById("inp-player-gameid").value.trim().toUpperCase(),
+      role: document.getElementById("inp-player-role").value
+    });
+
+    renderRosterModalBody(team);
+    renderTeamsTable();
+    e.target.reset();
+  };
+}
+
 // Bộ điều phối gọi hàm khởi tạo theo từng trang
 window.initPage = async function (pageName) {
   if (pageName === "dashboard") await initDashboardPage();
   if (pageName === "tournaments") await initTournamentsPage();
+  if (pageName === "teams") await initTeamsPage();
   if (pageName === "accounts") await initAccountsPage();
 };

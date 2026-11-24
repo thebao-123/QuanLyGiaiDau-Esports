@@ -1,0 +1,172 @@
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Tổng số đội tuyển</div>
+    <div class="kpi-value" id="kpi-total-teams">0</div>
+    <div class="kpi-sub">Đã đăng ký trên hệ thống</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Tổng tuyển thủ</div>
+    <div class="kpi-value" id="kpi-total-players">0</div>
+    <div class="kpi-sub">Đội hình chính thức & dự bị</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Đơn chờ duyệt giải</div>
+    <div class="kpi-value" id="kpi-pending-apps">0</div>
+    <div class="kpi-sub">Cần Ban tổ chức xác nhận</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Khu vực / Quốc gia</div>
+    <div class="kpi-value" id="kpi-total-countries">0</div>
+    <div class="kpi-sub">Độ phủ giải đấu quốc tế</div>
+  </div>
+</div>
+
+<!-- Bảng 1: Danh sách đội tuyển -->
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Danh sách đội tuyển</h3>
+    <div class="toolbar">
+      <input type="text" id="search-team" class="form-input" style="width:230px;" placeholder="Tìm tên đội hoặc Tag (VD: T1)..." />
+      <select id="filter-team-country" class="form-select" style="width:180px;">
+        <option value="ALL">Tất cả quốc gia</option>
+        <option value="Hàn Quốc">Hàn Quốc</option>
+        <option value="Trung Quốc">Trung Quốc</option>
+        <option value="Việt Nam">Việt Nam</option>
+        <option value="Châu Âu">Châu Âu</option>
+      </select>
+      <button id="btn-open-team-modal" class="btn btn-primary">+ Thêm đội tuyển</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Tag</th>
+          <th>Tên đội tuyển</th>
+          <th>Quốc gia / Khu vực</th>
+          <th>Đội trưởng</th>
+          <th>Quân số</th>
+          <th>Thao tác</th>
+        </tr>
+      </thead>
+      <tbody id="teams-table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Bảng 2: Duyệt đơn đăng ký tham dự giải đấu (participation_applications) -->
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Hồ sơ đăng ký tham dự giải đấu</h3>
+    <span style="font-size:13px; color:#64748b;">Xét duyệt đội tuyển đủ điều kiện vào giải</span>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Mã đơn</th>
+          <th>Đội tuyển</th>
+          <th>Giải đấu đăng ký</th>
+          <th>Ngày gửi</th>
+          <th>Trạng thái</th>
+          <th>Xét duyệt</th>
+        </tr>
+      </thead>
+      <tbody id="applications-table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal 1: Thêm đội tuyển mới -->
+<div id="team-modal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); align-items:center; justify-content:center; z-index:999;">
+  <div class="card" style="width:100%; max-width:460px; margin:0 16px;">
+    <div class="card-header">
+      <h3 class="card-title">Đăng ký đội tuyển mới</h3>
+      <button type="button" id="btn-close-team-modal" class="btn btn-outline btn-sm">✕</button>
+    </div>
+    <form id="form-create-team">
+      <div class="form-group">
+        <label class="form-label">Tên đội tuyển *</label>
+        <input type="text" id="inp-team-name" class="form-input" required placeholder="VD: GAM Esports" />
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Mã viết tắt (Tag) *</label>
+          <input type="text" id="inp-team-tag" class="form-input" required maxlength="10" placeholder="VD: GAM" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Quốc gia / Khu vực *</label>
+          <select id="inp-team-country" class="form-select">
+            <option value="Việt Nam">Việt Nam</option>
+            <option value="Hàn Quốc">Hàn Quốc</option>
+            <option value="Trung Quốc">Trung Quốc</option>
+            <option value="Châu Âu">Châu Âu</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Đội trưởng quản lý *</label>
+        <input type="text" id="inp-team-captain" class="form-input" required placeholder="VD: Đỗ Duy Khánh (Levi)" />
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+        <button type="button" id="btn-cancel-team-modal" class="btn btn-outline">Hủy</button>
+        <button type="submit" class="btn btn-primary">Lưu đội tuyển</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 2: Xem đội hình & Thêm tuyển thủ -->
+<div id="roster-modal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); align-items:center; justify-content:center; z-index:999;">
+  <div class="card" style="width:100%; max-width:640px; margin:0 16px; max-height:90vh; overflow-y:auto;">
+    <div class="card-header">
+      <h3 class="card-title" id="roster-modal-title">Đội hình tuyển thủ</h3>
+      <button type="button" id="btn-close-roster-modal" class="btn btn-outline btn-sm">✕</button>
+    </div>
+
+    <div class="table-wrap" style="margin-bottom:18px;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Thi đấu (IGN)</th>
+            <th>Họ và tên</th>
+            <th>Game ID</th>
+            <th>Vai trò</th>
+          </tr>
+        </thead>
+        <tbody id="roster-table-body"></tbody>
+      </table>
+    </div>
+
+    <form id="form-add-player" style="border-top:1px solid #e2e8f0; padding-top:14px;">
+      <div style="font-size:13px; font-weight:700; color:#0f172a; margin-bottom:10px;">+ Bổ sung tuyển thủ vào đội</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div class="form-group">
+          <label class="form-label">Tên trong game (IGN) *</label>
+          <input type="text" id="inp-player-ign" class="form-input" required placeholder="VD: Kiaya" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Họ tên thật *</label>
+          <input type="text" id="inp-player-name" class="form-input" required placeholder="VD: Trần Duy Sang" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tài khoản Game ID *</label>
+          <input type="text" id="inp-player-gameid" class="form-input" required placeholder="VD: VN_KIAYA_011" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Vị trí đội hình</label>
+          <select id="inp-player-role" class="form-select">
+            <option value="MAIN">Chính thức (MAIN)</option>
+            <option value="SUB">Dự bị (SUB)</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end;">
+        <button type="submit" class="btn btn-primary btn-sm">Thêm tuyển thủ</button>
+      </div>
+    </form>
+  </div>
+</div>
