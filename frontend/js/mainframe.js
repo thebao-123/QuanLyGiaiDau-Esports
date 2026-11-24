@@ -51,7 +51,7 @@ function closeModal(modalId) {
 // Bảo đảm trang Lịch thi đấu luôn nạp đúng stylesheet mới, tránh trình duyệt
 // tiếp tục sử dụng CSS cũ từ bộ nhớ đệm hoặc thiếu liên kết CSS trong index.html.
 function ensureSchedulePageStyles() {
-  const versionedCss = new URL("./css/schedules.css?v=20261123-week-view-02", document.baseURI).href;
+  const versionedCss = new URL("./css/schedules.css?v=20261124-filter-referees-02", document.baseURI).href;
   let stylesheet = document.getElementById("schedulePageStyles");
 
   if (!stylesheet) {

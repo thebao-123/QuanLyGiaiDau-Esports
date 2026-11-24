@@ -108,6 +108,16 @@ public class MatchService {
         return matchRepo.save(m);
     }
 
+    /** Hoàn tác riêng thao tác đánh dấu sẵn sàng; không cho lùi các trạng thái khác. */
+    @Transactional
+    public Match undoReady(Long id) {
+        Match m = getById(id);
+        if (!"READY".equals(m.getMatchStatus()))
+            throw new IllegalArgumentException("Chỉ có thể hoàn tác khi trận đấu đang ở trạng thái READY");
+        m.setMatchStatus("SCHEDULED");
+        return matchRepo.save(m);
+    }
+
     /** UC-17: phân công trọng tài, có kiểm tra trùng giờ và vai trò. */
     @Transactional
     public MatchReferee assignReferee(Long matchId, Long refereeUserId) {

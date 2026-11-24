@@ -16,10 +16,36 @@
             <option value="ALL">Tất cả vòng đấu</option>
           </select>
         </label>
-        <label class="schedule-filter-control schedule-month-control" for="scheduleMonth">
+        <div class="schedule-filter-control schedule-month-control" id="scheduleMonthPicker">
           <span class="schedule-filter-icon" aria-hidden="true">▦</span>
-          <input class="form-input" id="scheduleMonth" type="month" aria-label="Tháng hiển thị" />
-        </label>
+          <button class="schedule-month-trigger" id="scheduleMonthTrigger" type="button"
+                  aria-haspopup="dialog" aria-expanded="false" aria-controls="scheduleMonthPopover">
+            <span id="scheduleMonthLabel" aria-live="polite">11/2026</span>
+          </button>
+          <div class="schedule-month-popover" id="scheduleMonthPopover" role="dialog"
+               aria-label="Chọn tháng hiển thị" hidden>
+            <div class="schedule-month-popover-header">
+              <button class="schedule-month-year-button" id="scheduleMonthPrevYear" type="button" aria-label="Năm trước">‹</button>
+              <strong id="scheduleMonthYear">2026</strong>
+              <button class="schedule-month-year-button" id="scheduleMonthNextYear" type="button" aria-label="Năm sau">›</button>
+            </div>
+            <div class="schedule-month-grid" id="scheduleMonthGrid" role="group" aria-label="Các tháng trong năm">
+              <button type="button" data-month="01" aria-pressed="false">01</button>
+              <button type="button" data-month="02" aria-pressed="false">02</button>
+              <button type="button" data-month="03" aria-pressed="false">03</button>
+              <button type="button" data-month="04" aria-pressed="false">04</button>
+              <button type="button" data-month="05" aria-pressed="false">05</button>
+              <button type="button" data-month="06" aria-pressed="false">06</button>
+              <button type="button" data-month="07" aria-pressed="false">07</button>
+              <button type="button" data-month="08" aria-pressed="false">08</button>
+              <button type="button" data-month="09" aria-pressed="false">09</button>
+              <button type="button" data-month="10" aria-pressed="false">10</button>
+              <button type="button" data-month="11" aria-pressed="false">11</button>
+              <button type="button" data-month="12" aria-pressed="false">12</button>
+            </div>
+          </div>
+          <input id="scheduleMonth" type="hidden" value="" />
+        </div>
       </div>
 
       <div class="schedule-toolbar-actions">
@@ -75,7 +101,7 @@
     <div class="table-wrap schedule-table-wrap">
       <table class="data-table schedule-match-table">
         <thead><tr>
-          <th>Thời gian</th><th>Trận đấu</th><th>Vòng</th><th>Thể thức</th><th>Trạng thái</th><th>Thao tác</th>
+          <th>Thời gian</th><th>Trận đấu</th><th>Vòng</th><th>Thể thức</th><th>Trạng thái</th><th>Trọng tài</th><th>Thao tác</th>
         </tr></thead>
         <tbody id="scheduleMatchTableBody"><tr><td colspan="6" class="schedule-empty-cell">Đang tải dữ liệu lịch thi đấu...</td></tr></tbody>
       </table>
@@ -180,10 +206,45 @@
       <header class="schedule-modal-header"><div><h3 id="scheduleRefereeModalTitle">Phân công trọng tài</h3><p id="scheduleRefereeMatchLabel">Trận đấu</p></div><button class="btn btn-outline btn-sm" type="button" data-close-schedule-modal="scheduleRefereeModal">✕</button></header>
       <div class="schedule-modal-body"><h4 class="schedule-subheading">Trọng tài hiện tại</h4><div class="schedule-referee-list" id="scheduleRefereeCurrentList"></div>
         <form id="scheduleRefereeForm" class="schedule-referee-form"><div class="form-group"><label class="form-label" for="scheduleRefereeSelect">Thêm trọng tài</label><select class="form-select" id="scheduleRefereeSelect"><option value="">Chọn tài khoản trọng tài</option></select></div><button class="btn btn-primary" id="scheduleRefereeSubmit" type="submit">＋ Phân công</button></form>
-        <p class="schedule-help">Backend sẽ từ chối nếu trọng tài đã được phân công hoặc bị trùng lịch.</p>
+        <p class="schedule-help">Có thể phân công nhiều trọng tài cho một trận. Hệ thống tự kiểm tra vai trò, trạng thái tài khoản và lịch trùng trước khi lưu.</p>
       </div><footer class="schedule-modal-footer schedule-modal-footer-end"><button class="btn btn-outline" type="button" data-close-schedule-modal="scheduleRefereeModal">Đóng</button></footer>
     </section>
   </div>
 
-  <div class="schedule-toast" id="scheduleToast" role="status" aria-live="polite"></div>
+  <!-- Hộp thoại xác nhận chuyển trận đấu sang trạng thái Sẵn sàng -->
+  <div class="schedule-modal-backdrop" id="scheduleReadyModal" aria-hidden="true" hidden>
+    <section class="schedule-modal schedule-modal-compact schedule-ready-modal" role="dialog" aria-modal="true" aria-labelledby="scheduleReadyModalTitle">
+      <header class="schedule-modal-header">
+        <div>
+          <h3 id="scheduleReadyModalTitle">Xác nhận sẵn sàng</h3>
+          <p>Kiểm tra lại trận đấu trước khi cập nhật trạng thái.</p>
+        </div>
+        <button class="btn btn-outline btn-sm" type="button" data-close-schedule-modal="scheduleReadyModal" aria-label="Đóng">✕</button>
+      </header>
+      <div class="schedule-modal-body">
+        <div class="schedule-ready-summary">
+          <span class="schedule-ready-icon" aria-hidden="true">✓</span>
+          <div class="schedule-ready-summary-copy">
+            <strong id="scheduleReadyMatchTitle">Đội 1 vs Đội 2</strong>
+            <span id="scheduleReadyMatchMeta">Mã trận · Thời gian thi đấu</span>
+          </div>
+        </div>
+        <div class="schedule-ready-status-change">
+          <div><span>TRẠNG THÁI HIỆN TẠI</span><strong>Đã lên lịch</strong></div>
+          <span class="schedule-ready-status-arrow" aria-hidden="true">→</span>
+          <div><span>TRẠNG THÁI SAU KHI XÁC NHẬN</span><strong class="schedule-ready-status-next">Sẵn sàng</strong></div>
+        </div>
+        <p class="schedule-help">Bạn có thể hoàn tác thao tác này ngay sau khi cập nhật thành công.</p>
+      </div>
+      <footer class="schedule-modal-footer schedule-modal-footer-end">
+        <button class="btn btn-outline" type="button" data-close-schedule-modal="scheduleReadyModal">Hủy</button>
+        <button class="btn btn-primary" id="scheduleReadyConfirm" type="button">Xác nhận sẵn sàng</button>
+      </footer>
+    </section>
+  </div>
+
+  <div class="schedule-toast" id="scheduleToast" role="status" aria-live="polite">
+    <span class="schedule-toast-message" id="scheduleToastMessage"></span>
+    <button class="schedule-toast-undo" id="scheduleToastUndo" type="button" hidden>↶ Hoàn tác</button>
+  </div>
 </div>
