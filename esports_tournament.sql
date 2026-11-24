@@ -832,3 +832,28 @@ SELECT (SELECT match_id FROM matches WHERE match_code = 'CKTG26-SF-M2' LIMIT 1),
        'CONFIRMED', @cktg_ref_id, @cktg_org_id, NOW(), 'Loạt BO5 căng thẳng đến ván 5 quyết định'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'CKTG26-FINAL' AND mr.result_id IS NOT NULL)
   AND NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'CKTG26-SF-M2');
+
+  -- Cập nhật ngày tháng và trạng thái hợp lý theo mốc 26/11/2026
+UPDATE tournaments
+SET start_date = '2026-11-01',
+    end_date = '2026-12-05',
+    tournament_status = 'ONGOING'
+WHERE tournament_id = 1; -- CHUNG KẾT THẾ GIỚI LMHT 2026 (Đang diễn ra)
+
+UPDATE tournaments
+SET start_date = '2026-12-10',
+    end_date = '2026-12-25',
+    tournament_status = 'DRAFT'
+WHERE tournament_id = 5; -- KESPA CUP MÙA ĐÔNG 2026 (Sắp diễn ra)
+
+UPDATE tournaments
+SET start_date = '2027-01-15',
+    end_date = '2027-03-25',
+    tournament_status = 'DRAFT'
+WHERE tournament_id = 6; -- VCS xuân 2027 (Sắp diễn ra)
+
+UPDATE tournaments
+SET start_date = '2027-06-15',
+    end_date = '2027-08-25',
+    tournament_status = 'DRAFT'
+WHERE tournament_id = 7; -- VCS đông 2027 (Sắp diễn ra)
