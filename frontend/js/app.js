@@ -30,6 +30,9 @@ const DEFAULT_ROSTERS_BY_TAG = {
   WBG: [
     { ign: "Xiaohu", fullName: "Li Yuan-hao", gameAccountId: "CN_XIAOHU_008", role: "MAIN" }
   ],
+  LOS: [
+    { ign: "Thebausffs", fullName: "Simon Hofverberg", gameAccountId: "EU_BAUS_009", role: "MAIN" }
+  ],
   LR: [
     { ign: "Thebausffs", fullName: "Simon Hofverberg", gameAccountId: "EU_BAUS_009", role: "MAIN" }
   ],
@@ -38,11 +41,20 @@ const DEFAULT_ROSTERS_BY_TAG = {
   ]
 };
 
+function getCurrentUser() {
+  return JSON.parse(localStorage.getItem("currentUser") || "null");
+}
+
+function getTodayLocalISO() {
+  return new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD theo múi giờ máy tính
+}
+
 function normalizeTournament(t) {
+  const gId = t.gameId ?? t.game_id ?? t.gameTitle?.gameId ?? t.game?.gameId;
   return {
     id: t.tournamentId ?? t.tournament_id ?? t.id ?? "",
     name: t.tournamentName ?? t.tournament_name ?? t.name ?? t.title ?? "Chưa đặt tên",
-    game: t.gameName ?? t.game ?? GAME_MAP[t.gameId ?? t.game_id] ?? "Liên Minh Huyền Thoại",
+    game: t.gameName ?? t.gameTitle?.gameName ?? t.game?.gameName ?? GAME_MAP[gId] ?? "Liên Minh Huyền Thoại",
     startDate: t.startDate ?? t.start_date ?? t.date ?? "",
     endDate: t.endDate ?? t.end_date ?? "",
     maxTeams: t.maxTeams ?? t.max_teams ?? t.teams ?? t.teamCount ?? 16,
@@ -50,19 +62,30 @@ function normalizeTournament(t) {
   };
 }
 
-function normalizeStatusCategory(status) {
-  const s = (status || "").toUpperCase();
+function normalizeStatusCategory(tOrStatus) {
+  const isObj = typeof tOrStatus === "object" && tOrStatus !== null;
+  const s = (isObj ? tOrStatus.status : tOrStatus || "").toUpperCase();
+
+  if (s === "COMPLETED" || s === "FINISHED" || s === "DONE" || s.includes("KẾT THÚC")) {
+    return "COMPLETED";
+  }
   if (s === "ONGOING" || s === "IN_PROGRESS" || s === "ACTIVE" || s.includes("DIỄN RA")) {
     return "ONGOING";
   }
-  if (s === "COMPLETED" || s === "FINISHED" || s === "DONE" || s.includes("KẾT THÚC")) {
-    return "COMPLETED";
+
+  // Tự đối chiếu ngày bắt đầu / kết thúc với ngày hôm nay nếu đang ở trạng thái DRAFT
+  if (isObj && tOrStatus.startDate) {
+    const today = getTodayLocalISO();
+    if (tOrStatus.endDate && today > tOrStatus.endDate) return "COMPLETED";
+    if (today >= tOrStatus.startDate && (!tOrStatus.endDate || today <= tOrStatus.endDate)) {
+      return "ONGOING";
+    }
   }
   return "DRAFT";
 }
 
-function renderTournamentStatusBadge(status) {
-  const cat = normalizeStatusCategory(status);
+function renderTournamentStatusBadge(tOrStatus) {
+  const cat = normalizeStatusCategory(tOrStatus);
   if (cat === "ONGOING") {
     return `<span class="badge badge-live">● Đang diễn ra</span>`;
   }
@@ -77,24 +100,38 @@ function normalizeUser(u) {
     id: u.userId ?? u.user_id ?? u.id ?? "",
     fullName: u.fullName ?? u.full_name ?? u.name ?? "Chưa cập nhật",
     email: u.email ?? "",
-    phone: u.phone ?? "—",
+    phone: u.phone ?? "",
     role: (u.role ?? "VIEWER").toUpperCase(),
     status: (u.accountStatus ?? u.account_status ?? "ACTIVE").toUpperCase()
   };
 }
 
-function normalizeTeam(team, index) {
+function normalizeRosterMember(m) {
+  return {
+    ign: m.inGameName ?? m.ign ?? m.player?.inGameName ?? "Player",
+    fullName: m.playerName ?? m.fullName ?? m.player?.playerName ?? "—",
+    gameAccountId: m.gameAccountId ?? m.player?.gameAccountId ?? "—",
+    role: (m.memberRole ?? m.role ?? "MAIN").toUpperCase()
+  };
+}
+
+function normalizeTeam(team, index, dbRoster = null) {
   const tag = (team.teamTag ?? team.team_tag ?? team.tag ?? `TM${index + 1}`).toUpperCase();
-  const roster = Array.isArray(team.players)
-    ? team.players
-    : (DEFAULT_ROSTERS_BY_TAG[tag] ? [...DEFAULT_ROSTERS_BY_TAG[tag]] : []);
+  const captainObj = team.captain ?? team.captainUser;
+  const roster = Array.isArray(dbRoster)
+    ? dbRoster.map(normalizeRosterMember)
+    : Array.isArray(team.players)
+    ? team.players.map(normalizeRosterMember)
+    : DEFAULT_ROSTERS_BY_TAG[tag]
+    ? [...DEFAULT_ROSTERS_BY_TAG[tag]]
+    : [];
 
   return {
     id: team.teamId ?? team.team_id ?? team.id ?? index + 1,
     tag,
     name: team.teamName ?? team.team_name ?? team.name ?? "Đội tuyển mới",
     country: team.country ?? team.region ?? "Việt Nam",
-    captain: team.captainName ?? team.captain ?? `Đội trưởng ${tag}`,
+    captain: captainObj?.fullName ?? team.captainName ?? team.captain ?? `Đội trưởng ${tag}`,
     players: roster
   };
 }
@@ -108,7 +145,7 @@ async function initDashboardPage() {
   ]);
 
   const tournaments = rawTournaments.map(normalizeTournament);
-  const ongoingCount = tournaments.filter((t) => normalizeStatusCategory(t.status) === "ONGOING").length;
+  const ongoingCount = tournaments.filter((t) => normalizeStatusCategory(t) === "ONGOING").length;
 
   document.getElementById("kpi-total-tournaments").textContent = tournaments.length;
   document.getElementById("kpi-ongoing-tournaments").textContent = ongoingCount;
@@ -126,7 +163,7 @@ async function initDashboardPage() {
           <td>${t.game}</td>
           <td>${timeText}</td>
           <td>${t.maxTeams} đội</td>
-          <td>${renderTournamentStatusBadge(t.status)}</td>
+          <td>${renderTournamentStatusBadge(t)}</td>
         </tr>
       `;
     })
@@ -149,7 +186,7 @@ async function initTournamentsPage() {
 
     const filtered = allTournaments.filter((t) => {
       const matchName = t.name.toLowerCase().includes(keyword);
-      const matchStatus = filterSt === "ALL" || normalizeStatusCategory(t.status) === filterSt;
+      const matchStatus = filterSt === "ALL" || normalizeStatusCategory(t) === filterSt;
       return matchName && matchStatus;
     });
 
@@ -163,7 +200,7 @@ async function initTournamentsPage() {
             <td>${t.startDate || "—"}</td>
             <td>${t.endDate || "—"}</td>
             <td>${t.maxTeams}</td>
-            <td>${renderTournamentStatusBadge(t.status)}</td>
+            <td>${renderTournamentStatusBadge(t)}</td>
           </tr>
         `
       )
@@ -181,20 +218,19 @@ async function initTournamentsPage() {
 
   document.getElementById("form-create-tournament").onsubmit = async (e) => {
     e.preventDefault();
+    const currentUser = getCurrentUser();
     const gameId = Number(document.getElementById("inp-tournament-game").value);
     const payload = {
       gameId,
-      gameName: GAME_MAP[gameId],
-      organizerId: 2,
+      organizerId: currentUser?.userId || 2,
       tournamentName: document.getElementById("inp-tournament-name").value.trim(),
       startDate: document.getElementById("inp-start-date").value,
       endDate: document.getElementById("inp-end-date").value,
-      maxTeams: Number(document.getElementById("inp-max-teams").value) || 16,
-      tournamentStatus: "DRAFT"
+      maxTeams: Number(document.getElementById("inp-max-teams").value) || 16
     };
 
     const created = await ApiService.createTournament(payload);
-    allTournaments.unshift(normalizeTournament(created));
+    allTournaments.unshift(normalizeTournament({ ...payload, ...created }));
     renderTable();
     e.target.reset();
     closeModal();
@@ -248,7 +284,7 @@ async function initAccountsPage() {
             <td>#${u.id}</td>
             <td style="font-weight:600;">${u.fullName}</td>
             <td>${u.email}</td>
-            <td>${u.phone}</td>
+            <td>${u.phone || "—"}</td>
             <td>
               <select class="form-select" style="padding:5px 8px; font-size:12px; width:165px;" onchange="changeUserRole(${u.id}, this.value)">
                 ${Object.entries(ROLE_LABELS)
@@ -271,20 +307,39 @@ async function initAccountsPage() {
       .join("");
   }
 
-  window.changeUserRole = function (userId, newRole) {
+  window.changeUserRole = async function (userId, newRole) {
     const target = allUsers.find((u) => u.id === userId);
-    if (target) {
-      target.role = newRole;
-      updateUserKpis();
+    if (!target) return;
+
+    if (typeof ApiService.updateUser === "function") {
+      await ApiService.updateUser(userId, {
+        fullName: target.fullName,
+        email: target.email,
+        phone: target.phone || null,
+        role: newRole,
+        accountStatus: target.status
+      });
     }
+    target.role = newRole;
+    updateUserKpis();
   };
 
-  window.toggleUserStatus = function (userId) {
+  window.toggleUserStatus = async function (userId) {
     const target = allUsers.find((u) => u.id === userId);
-    if (target) {
-      target.status = target.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
-      renderUsersTable();
+    if (!target) return;
+
+    const nextStatus = target.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
+    if (typeof ApiService.updateUser === "function") {
+      await ApiService.updateUser(userId, {
+        fullName: target.fullName,
+        email: target.email,
+        phone: target.phone || null,
+        role: target.role,
+        accountStatus: nextStatus
+      });
     }
+    target.status = nextStatus;
+    renderUsersTable();
   };
 
   renderUsersTable();
@@ -296,17 +351,23 @@ async function initAccountsPage() {
   document.getElementById("btn-close-user-modal").onclick = closeModal;
   document.getElementById("btn-cancel-user-modal").onclick = closeModal;
 
-  document.getElementById("form-create-user").onsubmit = (e) => {
+  document.getElementById("form-create-user").onsubmit = async (e) => {
     e.preventDefault();
-    const newUser = {
-      id: allUsers.length + 1,
+    const dto = {
       fullName: document.getElementById("inp-user-name").value.trim(),
       email: document.getElementById("inp-user-email").value.trim(),
-      phone: document.getElementById("inp-user-phone").value.trim() || "—",
+      password: "123456",
+      phone: document.getElementById("inp-user-phone").value.trim() || null,
       role: document.getElementById("inp-user-role").value,
-      status: "ACTIVE"
+      accountStatus: "ACTIVE"
     };
-    allUsers.unshift(newUser);
+
+    const created =
+      typeof ApiService.createUser === "function"
+        ? await ApiService.createUser(dto)
+        : { userId: allUsers.length + 1, ...dto };
+
+    allUsers.unshift(normalizeUser({ ...dto, ...created }));
     renderUsersTable();
     e.target.reset();
     closeModal();
@@ -315,16 +376,42 @@ async function initAccountsPage() {
 
 // ===== 4. KHỞI TẠO TRANG QUẢN LÝ ĐỘI TUYỂN =====
 async function initTeamsPage() {
-  const rawTeams = await ApiService.getTeams();
-  let allTeams = rawTeams.map((t, idx) => normalizeTeam(t, idx));
+  const [rawTeams, rawTournaments, rawUsers] = await Promise.all([
+    ApiService.getTeams(),
+    ApiService.getTournaments(),
+    ApiService.getUsers()
+  ]);
+
+  const allUsers = rawUsers.map(normalizeUser);
+  const tournaments = rawTournaments.map(normalizeTournament);
+
+  // Tải đội hình thật từ MySQL cho từng đội
+  const rostersList =
+    typeof ApiService.getTeamRoster === "function"
+      ? await Promise.all(rawTeams.map((t) => ApiService.getTeamRoster(t.teamId ?? t.id)))
+      : [];
+
+  let allTeams = rawTeams.map((t, idx) => normalizeTeam(t, idx, rostersList[idx]));
   let selectedTeamId = null;
 
-  let applications = [
-    { appId: 101, teamTag: "T1", teamName: "T1", tournamentName: "CKTG 2026", appliedAt: "2026-10-12", status: "APPROVED" },
-    { appId: 102, teamTag: "BLG", teamName: "Bilibili Gaming", tournamentName: "CKTG 2026", appliedAt: "2026-10-13", status: "APPROVED" },
-    { appId: 103, teamTag: "GAM", teamName: "GAM Esports", tournamentName: "CKTG 2026", appliedAt: "2026-11-20", status: "PENDING" },
-    { appId: 104, teamTag: "LR", teamName: "Los Ratones", tournamentName: "MSI 2026", appliedAt: "2026-11-22", status: "PENDING" }
-  ];
+  // Tải đơn đăng ký tham dự thật từ MySQL theo từng giải đấu
+  let applications = [];
+  if (typeof ApiService.getTournamentApplications === "function") {
+    const appsByTournament = await Promise.all(
+      tournaments.map(async (tour) => {
+        const list = await ApiService.getTournamentApplications(tour.id);
+        return (list || []).map((a) => ({
+          appId: a.applicationId ?? a.id,
+          teamTag: a.team?.teamTag ?? a.teamTag ?? "TEAM",
+          teamName: a.team?.teamName ?? a.teamName ?? "Đội tuyển",
+          tournamentName: a.tournament?.tournamentName ?? tour.name,
+          appliedAt: (a.submittedAt ?? a.appliedAt ?? "").toString().slice(0, 10) || "2026-11-24",
+          status: (a.applicationStatus ?? a.status ?? "PENDING").toUpperCase()
+        }));
+      })
+    );
+    applications = appsByTournament.flat();
+  }
 
   const tbody = document.getElementById("teams-table-body");
   const appBody = document.getElementById("applications-table-body");
@@ -376,19 +463,24 @@ async function initTeamsPage() {
 
   function renderApplicationsTable() {
     updateTeamKpis();
+    if (!applications.length) {
+      appBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#64748b;">Chưa có hồ sơ đăng ký tham dự giải nào trong CSDL.</td></tr>`;
+      return;
+    }
+
     appBody.innerHTML = applications
       .map((app) => {
         let badgeHtml = `<span class="badge badge-upcoming">Chờ duyệt</span>`;
         if (app.status === "APPROVED") badgeHtml = `<span class="badge badge-live">● Đã duyệt</span>`;
         if (app.status === "REJECTED") badgeHtml = `<span class="badge badge-danger">Từ chối</span>`;
 
-        const actionsHtml =
-          app.status === "PENDING"
-            ? `
+        const isDone = app.status === "APPROVED" || app.status === "REJECTED";
+        const actionsHtml = !isDone
+          ? `
               <button class="btn btn-primary btn-sm" onclick="reviewApplication(${app.appId}, 'APPROVED')">Duyệt</button>
               <button class="btn btn-outline btn-sm" onclick="reviewApplication(${app.appId}, 'REJECTED')">Từ chối</button>
             `
-            : `<span style="font-size:12px; color:#64748b;">Đã xử lý</span>`;
+          : `<span style="font-size:12px; color:#64748b;">Đã xử lý</span>`;
 
         return `
           <tr>
@@ -412,28 +504,45 @@ async function initTeamsPage() {
       return;
     }
     rosterBody.innerHTML = team.players
-      .map(
-        (p) => `
+      .map((p) => {
+        const isMain = p.role === "MAIN" || p.role === "CAPTAIN";
+        const roleText = p.role === "CAPTAIN" ? "Đội trưởng" : isMain ? "Chính thức" : "Dự bị";
+        return `
           <tr>
             <td style="font-weight:700;">${p.ign}</td>
             <td>${p.fullName}</td>
             <td><code>${p.gameAccountId}</code></td>
-            <td><span class="badge ${p.role === "MAIN" ? "badge-live" : "badge-done"}">${p.role === "MAIN" ? "Chính thức" : "Dự bị"}</span></td>
+            <td><span class="badge ${isMain ? "badge-live" : "badge-done"}">${roleText}</span></td>
           </tr>
-        `
-      )
+        `;
+      })
       .join("");
   }
 
-  window.openTeamRoster = function (teamId) {
+  window.openTeamRoster = async function (teamId) {
     const team = allTeams.find((t) => t.id === teamId);
     if (!team) return;
     selectedTeamId = teamId;
+
+    if (typeof ApiService.getTeamRoster === "function") {
+      const latestRoster = await ApiService.getTeamRoster(teamId);
+      if (Array.isArray(latestRoster)) {
+        team.players = latestRoster.map(normalizeRosterMember);
+      }
+    }
     renderRosterModalBody(team);
     rosterModal.style.display = "flex";
   };
 
-  window.reviewApplication = function (appId, newStatus) {
+  window.reviewApplication = async function (appId, newStatus) {
+    const currentUser = getCurrentUser();
+    if (typeof ApiService.reviewApplication === "function") {
+      await ApiService.reviewApplication(appId, {
+        reviewerUserId: currentUser?.userId || 2,
+        status: newStatus,
+        note: newStatus === "APPROVED" ? "Đã phê duyệt hồ sơ" : "Từ chối hồ sơ"
+      });
+    }
     const app = applications.find((a) => a.appId === appId);
     if (app) {
       app.status = newStatus;
@@ -453,34 +562,55 @@ async function initTeamsPage() {
 
   document.getElementById("form-create-team").onsubmit = async (e) => {
     e.preventDefault();
-    const payload = {
+    const captainInput = document.getElementById("inp-team-captain").value.trim().toLowerCase();
+    const matchedUser =
+      allUsers.find(
+        (u) =>
+          u.fullName.toLowerCase().includes(captainInput) ||
+          u.email.toLowerCase().includes(captainInput)
+      ) ||
+      allUsers.find((u) => u.role === "TEAM_CAPTAIN") ||
+      allUsers[0];
+
+    const dto = {
+      captainUserId: matchedUser ? matchedUser.id : 5,
       teamName: document.getElementById("inp-team-name").value.trim(),
       teamTag: document.getElementById("inp-team-tag").value.trim().toUpperCase(),
-      country: document.getElementById("inp-team-country").value,
-      captainName: document.getElementById("inp-team-captain").value.trim(),
-      players: []
+      country: document.getElementById("inp-team-country").value
     };
 
-    const created = await ApiService.createTeam(payload);
-    allTeams.unshift(normalizeTeam({ ...payload, ...created }, allTeams.length));
+    const created = await ApiService.createTeam(dto);
+    allTeams.unshift(
+      normalizeTeam(
+        { ...dto, ...created, captainName: matchedUser ? matchedUser.fullName : captainInput },
+        allTeams.length,
+        []
+      )
+    );
     renderTeamsTable();
     e.target.reset();
     closeTeamModal();
   };
 
   document.getElementById("btn-close-roster-modal").onclick = () => (rosterModal.style.display = "none");
-  document.getElementById("form-add-player").onsubmit = (e) => {
+  document.getElementById("form-add-player").onsubmit = async (e) => {
     e.preventDefault();
     const team = allTeams.find((t) => t.id === selectedTeamId);
     if (!team) return;
 
-    team.players.push({
-      ign: document.getElementById("inp-player-ign").value.trim(),
-      fullName: document.getElementById("inp-player-name").value.trim(),
+    const dto = {
+      inGameName: document.getElementById("inp-player-ign").value.trim(),
+      playerName: document.getElementById("inp-player-name").value.trim(),
       gameAccountId: document.getElementById("inp-player-gameid").value.trim().toUpperCase(),
-      role: document.getElementById("inp-player-role").value
-    });
+      memberRole: document.getElementById("inp-player-role").value
+    };
 
+    const savedMember =
+      typeof ApiService.addTeamMember === "function"
+        ? await ApiService.addTeamMember(selectedTeamId, dto)
+        : dto;
+
+    team.players.push(normalizeRosterMember(savedMember || dto));
     renderRosterModalBody(team);
     renderTeamsTable();
     e.target.reset();
