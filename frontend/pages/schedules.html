@@ -18,9 +18,10 @@
         </label>
         <div class="schedule-filter-control schedule-month-control" id="scheduleMonthPicker">
           <span class="schedule-filter-icon" aria-hidden="true">▦</span>
-          <button class="schedule-month-trigger" id="scheduleMonthTrigger" type="button"
+          <button class="schedule-month-trigger is-empty" id="scheduleMonthTrigger" type="button"
+                  aria-label="Chọn tháng để lọc; mặc định hiển thị tất cả trận"
                   aria-haspopup="dialog" aria-expanded="false" aria-controls="scheduleMonthPopover">
-            <span id="scheduleMonthLabel" aria-live="polite">11/2026</span>
+            <span id="scheduleMonthLabel" aria-live="polite">Chọn tháng</span>
           </button>
           <div class="schedule-month-popover" id="scheduleMonthPopover" role="dialog"
                aria-label="Chọn tháng hiển thị" hidden>
@@ -42,6 +43,9 @@
               <button type="button" data-month="10" aria-pressed="false">10</button>
               <button type="button" data-month="11" aria-pressed="false">11</button>
               <button type="button" data-month="12" aria-pressed="false">12</button>
+            </div>
+            <div class="schedule-month-popover-footer">
+              <button class="schedule-month-clear" id="scheduleMonthClear" type="button">Bỏ lọc tháng · Hiển thị tất cả trận</button>
             </div>
           </div>
           <input id="scheduleMonth" type="hidden" value="" />
