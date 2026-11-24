@@ -14,6 +14,19 @@ async function fetchWithFallback(endpoint, fallbackData, options = {}) {
   }
 }
 
+async function sendJsonRequest(endpoint, method, payload) {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    const errText = await response.text().catch(() => "");
+    throw new Error(errText || `HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
 const ApiService = {
   getTournaments() {
     return fetchWithFallback("/tournaments", MOCK_DATA.tournaments);
@@ -41,6 +54,12 @@ const ApiService = {
       { userId: 4, fullName: "Trần Minh Trọng", email: "referee1@esports.vn", role: "REFEREE", accountStatus: "ACTIVE" },
       { userId: 5, fullName: "Lee Sang-hyeok", email: "captain.t1@esports.vn", role: "TEAM_CAPTAIN", accountStatus: "ACTIVE" }
     ]);
+  },
+  createUser(payload) {
+    return sendJsonRequest("/users", "POST", payload);
+  },
+  updateUser(userId, payload) {
+    return sendJsonRequest(`/users/${userId}`, "PUT", payload);
   },
   login(email, password) {
     return fetchWithFallback(
