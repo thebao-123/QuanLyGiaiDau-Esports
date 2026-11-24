@@ -23,6 +23,10 @@ async function initSchedulesPage() {
         loading: false,
         lastLoadError: '',
         toastTimer: null,
+        pendingUndo: null,
+        pendingReadyMatchId: null,
+        processingReadyChange: false,
+        monthPickerYear: new Date().getFullYear(),
         activeRefereeMatchId: null,
         viewMode: 'list',
         selectedDate: new Date(),
@@ -72,6 +76,14 @@ async function initSchedulesPage() {
         tournamentFilter: root.querySelector('#scheduleTournament'),
         roundFilter: root.querySelector('#scheduleRoundFilter'),
         monthInput: root.querySelector('#scheduleMonth'),
+        monthPicker: root.querySelector('#scheduleMonthPicker'),
+        monthTrigger: root.querySelector('#scheduleMonthTrigger'),
+        monthLabel: root.querySelector('#scheduleMonthLabel'),
+        monthPopover: root.querySelector('#scheduleMonthPopover'),
+        monthYear: root.querySelector('#scheduleMonthYear'),
+        monthGrid: root.querySelector('#scheduleMonthGrid'),
+        monthPrevYear: root.querySelector('#scheduleMonthPrevYear'),
+        monthNextYear: root.querySelector('#scheduleMonthNextYear'),
         viewList: root.querySelector('#scheduleViewList'),
         viewWeek: root.querySelector('#scheduleViewWeek'),
         weekControls: root.querySelector('#scheduleWeekControls'),
@@ -99,6 +111,12 @@ async function initSchedulesPage() {
         stageResultCount: root.querySelector('#scheduleStageResultCount'),
         notice: root.querySelector('#scheduleNotice'),
         toast: root.querySelector('#scheduleToast'),
+        toastMessage: root.querySelector('#scheduleToastMessage'),
+        toastUndo: root.querySelector('#scheduleToastUndo'),
+        readyModal: root.querySelector('#scheduleReadyModal'),
+        readyMatchTitle: root.querySelector('#scheduleReadyMatchTitle'),
+        readyMatchMeta: root.querySelector('#scheduleReadyMatchMeta'),
+        readyConfirm: root.querySelector('#scheduleReadyConfirm'),
         stageModal: root.querySelector('#scheduleStageModal'),
         roundModal: root.querySelector('#scheduleRoundModal'),
         matchModal: root.querySelector('#scheduleMatchModal'),
@@ -121,7 +139,11 @@ async function initSchedulesPage() {
         ['scheduleMatchForm', elements.matchForm],
         ['scheduleMatchModal', elements.matchModal],
         ['scheduleMatchTableBody', elements.matchTableBody],
-        ['scheduleStageList', elements.stageList]
+        ['scheduleStageList', elements.stageList],
+        ['scheduleMonthTrigger', elements.monthTrigger],
+        ['scheduleReadyModal', elements.readyModal],
+        ['scheduleReadyConfirm', elements.readyConfirm],
+        ['scheduleToastUndo', elements.toastUndo]
     ];
     const missingElements = requiredElements.filter(([, element]) => !element).map(([id]) => id);
     if (missingElements.length) {
@@ -273,12 +295,42 @@ async function initSchedulesPage() {
         return 'schedule-match-status-other';
     }
 
+    function clearToastTimer() {
+        if (state.toastTimer) window.clearTimeout(state.toastTimer);
+        state.toastTimer = null;
+    }
+
+    function hideUndoAction() {
+        state.pendingUndo = null;
+        elements.toastUndo.hidden = true;
+        elements.toastUndo.disabled = false;
+    }
+
     function showToast(message, isError = false) {
-        window.clearTimeout(state.toastTimer);
-        elements.toast.textContent = message;
+        clearToastTimer();
+        hideUndoAction();
+        elements.toastMessage.textContent = message;
         elements.toast.classList.toggle('error', isError);
         elements.toast.classList.add('show');
-        state.toastTimer = window.setTimeout(() => elements.toast.classList.remove('show'), 3400);
+        state.toastTimer = window.setTimeout(() => {
+            elements.toast.classList.remove('show');
+            state.toastTimer = null;
+        }, 3400);
+    }
+
+    function showUndoToast(message, matchId) {
+        clearToastTimer();
+        state.pendingUndo = { matchId: String(matchId) };
+        elements.toastMessage.textContent = message;
+        elements.toast.classList.remove('error');
+        elements.toastUndo.hidden = false;
+        elements.toastUndo.disabled = false;
+        elements.toast.classList.add('show');
+        state.toastTimer = window.setTimeout(() => {
+            hideUndoAction();
+            elements.toast.classList.remove('show');
+            state.toastTimer = null;
+        }, 8000);
     }
 
     function showNotice(message = '', type = 'info') {
@@ -286,6 +338,91 @@ async function initSchedulesPage() {
         elements.notice.textContent = message;
         elements.notice.classList.toggle('schedule-notice-error', type === 'error');
         elements.notice.classList.toggle('schedule-notice-success', type === 'success');
+    }
+
+    function renderMonthPicker() {
+        const selectedValue = elements.monthInput.value || monthKey(state.selectedDate);
+        const [selectedYear, selectedMonth] = selectedValue.split('-');
+        elements.monthLabel.textContent = `${selectedMonth}/${selectedYear}`;
+        elements.monthYear.textContent = String(state.monthPickerYear);
+
+        elements.monthGrid.querySelectorAll('[data-month]').forEach((button) => {
+            const isSelected = Number(selectedYear) === state.monthPickerYear
+                && button.dataset.month === selectedMonth;
+            button.classList.toggle('active', isSelected);
+            button.setAttribute('aria-pressed', String(isSelected));
+            button.setAttribute('aria-label', `Tháng ${button.dataset.month} năm ${state.monthPickerYear}`);
+        });
+    }
+
+    function openMonthPicker() {
+        const currentValue = elements.monthInput.value || monthKey(state.selectedDate);
+        state.monthPickerYear = Number(currentValue.slice(0, 4));
+        renderMonthPicker();
+        elements.monthPopover.hidden = false;
+        elements.monthTrigger.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeMonthPicker(returnFocus = false) {
+        elements.monthPopover.hidden = true;
+        elements.monthTrigger.setAttribute('aria-expanded', 'false');
+        if (returnFocus) elements.monthTrigger.focus();
+    }
+
+    function chooseScheduleMonth(month) {
+        elements.monthInput.value = `${state.monthPickerYear}-${String(month).padStart(2, '0')}`;
+        elements.monthInput.dispatchEvent(new Event('change', { bubbles: true }));
+        closeMonthPicker(true);
+    }
+
+    function openReadyConfirmation(match) {
+        state.pendingReadyMatchId = String(match.matchId);
+        const team1 = match.team1Tag || match.team1Name || 'Đội 1';
+        const team2 = match.team2Tag || match.team2Name || 'Đội 2';
+        const matchCode = match.matchCode ? `Mã trận ${match.matchCode}` : `Trận đấu #${match.matchId}`;
+        const scheduledTime = match.scheduledTime ? formatDateTime(match.scheduledTime) : 'Chưa xếp lịch';
+        elements.readyMatchTitle.textContent = `${team1} vs ${team2}`;
+        elements.readyMatchMeta.textContent = `${matchCode} · ${scheduledTime}`;
+        elements.readyConfirm.disabled = false;
+        openModal(elements.readyModal);
+        elements.readyConfirm.focus();
+    }
+
+    async function confirmReadyChange() {
+        const matchId = state.pendingReadyMatchId;
+        if (!matchId || state.processingReadyChange) return;
+
+        state.processingReadyChange = true;
+        elements.readyConfirm.disabled = true;
+        try {
+            await apiRequest(`/matches/${matchId}/status`, 'PATCH', { status: 'READY' });
+            state.pendingReadyMatchId = null;
+            closeModal(elements.readyModal, true);
+            await loadScheduleData(false);
+            showUndoToast('Trận đấu đã được đánh dấu Sẵn sàng.', matchId);
+        } catch (error) {
+            showToast(error.message || 'Không thể cập nhật trạng thái trận đấu.', true);
+        } finally {
+            state.processingReadyChange = false;
+            elements.readyConfirm.disabled = false;
+        }
+    }
+
+    async function undoReadyChange() {
+        const pendingUndo = state.pendingUndo;
+        if (!pendingUndo || elements.toastUndo.disabled) return;
+
+        clearToastTimer();
+        state.pendingUndo = null;
+        elements.toastUndo.disabled = true;
+        elements.toastUndo.hidden = true;
+        try {
+            await apiRequest(`/matches/${pendingUndo.matchId}/undo-ready`, 'PATCH');
+            await loadScheduleData(false);
+            showToast('Đã hoàn tác. Trận đấu trở về trạng thái Đã lên lịch.');
+        } catch (error) {
+            showToast(error.message || 'Không thể hoàn tác trạng thái trận đấu.', true);
+        }
     }
 
     function openModal(modal) {
@@ -296,8 +433,10 @@ async function initSchedulesPage() {
         document.body.style.overflow = 'hidden';
     }
 
-    function closeModal(modal) {
+    function closeModal(modal, force = false) {
         if (!modal) return;
+        if (modal === elements.readyModal && state.processingReadyChange && !force) return;
+        if (modal === elements.readyModal) state.pendingReadyMatchId = null;
         modal.classList.remove('open');
         modal.setAttribute('aria-hidden', 'true');
         modal.hidden = true;
@@ -307,7 +446,7 @@ async function initSchedulesPage() {
     }
 
     function closeAllModals() {
-        [elements.stageModal, elements.roundModal, elements.matchModal, elements.refereeModal, elements.stageTeamsModal]
+        [elements.stageModal, elements.roundModal, elements.matchModal, elements.refereeModal, elements.stageTeamsModal, elements.readyModal]
             .forEach((modal) => closeModal(modal));
     }
 
@@ -534,8 +673,21 @@ async function initSchedulesPage() {
     }
 
     function renderRefereeNames(referees) {
-        if (!Array.isArray(referees) || referees.length === 0) return '<span class="schedule-muted">Chưa phân công</span>';
-        return referees.map((referee) => `<span class="schedule-referee-chip">${escapeHtml(referee.fullName)}</span>`).join(' ');
+        if (!Array.isArray(referees) || referees.length === 0) {
+            return '<span class="schedule-referee-empty-inline"><i></i>Chưa phân công</span>';
+        }
+
+        const visibleReferees = referees.slice(0, 2);
+        const hiddenCount = referees.length - visibleReferees.length;
+        const refereeNames = referees.map((referee) => referee.fullName || `Trọng tài #${referee.userId ?? ''}`);
+        const chips = visibleReferees.map((referee) =>
+            `<span class="schedule-referee-chip">${escapeHtml(referee.fullName || `Trọng tài #${referee.userId ?? ''}`)}</span>`
+        ).join('');
+        const extraChip = hiddenCount > 0
+            ? `<span class="schedule-referee-chip schedule-referee-chip-more">+${hiddenCount}</span>`
+            : '';
+
+        return `<div class="schedule-referee-chips" title="${escapeHtml(refereeNames.join(', '))}">${chips}${extraChip}</div>`;
     }
 
     function renderMatchTable() {
@@ -566,7 +718,7 @@ async function initSchedulesPage() {
                 : isWeek
                     ? 'Không có trận đấu nào trong ngày này. Hãy chọn ngày khác hoặc chuyển sang chế độ Danh sách.'
                     : 'Không tìm thấy trận đấu phù hợp với bộ lọc hiện tại.';
-            elements.matchTableBody.innerHTML = `<tr><td colspan="6" class="schedule-empty-cell"><strong>${noMatches ? 'Chưa có trận đấu' : 'Không có dữ liệu phù hợp'}</strong><span>${escapeHtml(message)}</span></td></tr>`;
+            elements.matchTableBody.innerHTML = `<tr><td colspan="7" class="schedule-empty-cell"><strong>${noMatches ? 'Chưa có trận đấu' : 'Không có dữ liệu phù hợp'}</strong><span>${escapeHtml(message)}</span></td></tr>`;
             return;
         }
 
@@ -574,9 +726,11 @@ async function initSchedulesPage() {
             const status = normalize(match.matchStatus);
             const nextStatus = MATCH_NEXT_STATUS[status];
             const actions = [];
+            const refereeCount = Array.isArray(match.referees) ? match.referees.length : 0;
             if (nextStatus) {
                 actions.push(`<button class="btn btn-outline btn-sm schedule-action-button" type="button" data-schedule-action="advance-match" data-match-id="${escapeHtml(match.matchId)}" data-next-status="${nextStatus}">${nextStatus === 'READY' ? 'Sẵn sàng' : 'Bắt đầu'}</button>`);
             }
+            actions.push(`<button class="btn btn-outline btn-sm schedule-action-button schedule-referee-action" type="button" data-schedule-action="manage-referees" data-match-id="${escapeHtml(match.matchId)}" aria-label="${refereeCount ? 'Quản lý' : 'Phân công'} trọng tài cho trận ${escapeHtml(match.matchCode)}">${refereeCount ? `Trọng tài (${refereeCount})` : '＋ Phân công'}</button>`);
             if (status !== 'COMPLETED') {
                 actions.push(`<button class="btn btn-outline btn-sm schedule-action-button" type="button" data-schedule-action="edit-match" data-match-id="${escapeHtml(match.matchId)}">Sửa</button>`);
             } else {
@@ -597,6 +751,7 @@ async function initSchedulesPage() {
                 <td><div class="schedule-round-primary">${escapeHtml(roundTitle)}</div><div class="schedule-round-secondary">${escapeHtml(match.stageName || 'Chưa có giai đoạn')}</div></td>
                 <td><span class="schedule-best-of">BO${escapeHtml(match.bestOf || 3)}</span></td>
                 <td><span class="schedule-match-status ${matchStatusClass(status)}"><i></i>${escapeHtml(MATCH_STATUS_LABELS[status] || status || 'Chưa cập nhật')}</span></td>
+                <td class="schedule-referee-cell">${renderRefereeNames(match.referees)}</td>
                 <td><div class="schedule-match-actions">${actions.join('')}</div></td>
             </tr>`;
         }).join('');
@@ -781,7 +936,7 @@ async function initSchedulesPage() {
         state.loading = true;
         elements.refresh.disabled = true;
         if (showLoading) {
-            elements.matchTableBody.innerHTML = '<tr><td colspan="6" class="schedule-empty-cell">Đang tải dữ liệu lịch thi đấu...</td></tr>';
+            elements.matchTableBody.innerHTML = '<tr><td colspan="7" class="schedule-empty-cell">Đang tải dữ liệu lịch thi đấu...</td></tr>';
             elements.stageList.innerHTML = '<div class="schedule-loading-state">Đang tải cấu trúc giải đấu...</div>';
         }
 
@@ -909,7 +1064,7 @@ async function initSchedulesPage() {
         } catch (error) {
             state.lastLoadError = error.message || 'Không tải được dữ liệu từ máy chủ.';
             elements.matchTableBody.innerHTML = `
-                <tr><td colspan="6" class="schedule-empty-cell">
+                <tr><td colspan="7" class="schedule-empty-cell">
                     <strong>Không thể tải lịch thi đấu</strong><span>${escapeHtml(error.message)}</span>
                 </td></tr>`;
             elements.stageList.innerHTML = `
@@ -1352,8 +1507,14 @@ async function initSchedulesPage() {
             return;
         }
         if (action === 'advance-match') {
+            const nextStatus = normalize(button.dataset.nextStatus);
+            if (nextStatus === 'READY') {
+                openReadyConfirmation(match);
+                return;
+            }
+
             try {
-                await apiRequest(`/matches/${matchId}/status`, 'PATCH', { status: button.dataset.nextStatus });
+                await apiRequest(`/matches/${matchId}/status`, 'PATCH', { status: nextStatus });
                 showToast('Cập nhật trạng thái trận đấu thành công.');
                 await loadScheduleData(false);
             } catch (error) {
@@ -1533,8 +1694,10 @@ async function initSchedulesPage() {
         if (action === 'delete-round') deleteRound(button.dataset.roundId);
     }
 
-    // Tháng mặc định bám theo ngày hiện tại; danh sách vẫn hiển thị tất cả tháng.
+    // Tháng mặc định bám theo ngày hiện tại; bộ chọn hiển thị tháng bằng số.
     elements.monthInput.value = monthKey(state.selectedDate);
+    state.monthPickerYear = state.selectedDate.getFullYear();
+    renderMonthPicker();
 
     // Sự kiện bộ lọc.
     elements.search.addEventListener('input', () => {
@@ -1563,11 +1726,32 @@ async function initSchedulesPage() {
         state.weekStart = getWeekStart(state.selectedDate);
         renderMatchTable();
     });
+    elements.monthTrigger.addEventListener('click', () => {
+        if (elements.monthPopover.hidden) openMonthPicker();
+        else closeMonthPicker();
+    });
+    elements.monthPrevYear.addEventListener('click', () => {
+        state.monthPickerYear -= 1;
+        renderMonthPicker();
+    });
+    elements.monthNextYear.addEventListener('click', () => {
+        state.monthPickerYear += 1;
+        renderMonthPicker();
+    });
+    elements.monthGrid.addEventListener('click', (event) => {
+        const monthButton = event.target.closest('[data-month]');
+        if (monthButton) chooseScheduleMonth(Number(monthButton.dataset.month));
+    });
+    root.addEventListener('click', (event) => {
+        if (!elements.monthPicker.contains(event.target)) closeMonthPicker();
+    });
     elements.monthInput.addEventListener('change', () => {
         if (!elements.monthInput.value) return;
         const [year, month] = elements.monthInput.value.split('-').map(Number);
         state.selectedDate = new Date(year, month - 1, 1);
         state.weekStart = getWeekStart(state.selectedDate);
+        state.monthPickerYear = year;
+        renderMonthPicker();
         if (state.viewMode === 'week') renderMatchTable();
     });
     elements.weekStrip.addEventListener('click', (event) => {
@@ -1599,6 +1783,9 @@ async function initSchedulesPage() {
         openMatchModal();
     });
     elements.addStage.addEventListener('click', () => openStageModal());
+
+    elements.readyConfirm.addEventListener('click', confirmReadyChange);
+    elements.toastUndo.addEventListener('click', undoReadyChange);
 
     elements.matchTableBody.addEventListener('click', (event) => {
         const button = event.target.closest('button[data-schedule-action]');
@@ -1678,7 +1865,7 @@ async function initSchedulesPage() {
         });
     });
 
-    [elements.stageModal, elements.roundModal, elements.matchModal, elements.refereeModal, elements.stageTeamsModal].forEach((modal) => {
+    [elements.stageModal, elements.roundModal, elements.matchModal, elements.refereeModal, elements.stageTeamsModal, elements.readyModal].forEach((modal) => {
         modal.addEventListener('click', (event) => {
             if (event.target === modal) closeModal(modal);
         });
@@ -1686,6 +1873,10 @@ async function initSchedulesPage() {
 
     root.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return;
+        if (!elements.monthPopover.hidden) {
+            closeMonthPicker(true);
+            return;
+        }
         const openedModal = root.querySelector('.schedule-modal-backdrop.open');
         if (openedModal) closeModal(openedModal);
     });

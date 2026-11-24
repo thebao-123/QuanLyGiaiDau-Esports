@@ -48,6 +48,11 @@ public class MatchController {
         return matchService.changeStatus(id, body.get("status"));
     }
 
+    @PatchMapping("/{id}/undo-ready")
+    public Match undoReady(@PathVariable Long id) {
+        return matchService.undoReady(id);
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         matchService.delete(id);
