@@ -19,25 +19,51 @@ const DEFAULT_ROSTERS_BY_TAG = {
   T1: [
     { ign: "Zeus", fullName: "Choi Woo-je", gameAccountId: "KR_ZEUS_001", role: "MAIN" },
     { ign: "Oner", fullName: "Mun Hyeon-jun", gameAccountId: "KR_ONER_002", role: "MAIN" },
-    { ign: "Faker", fullName: "Lee Sang-hyeok", gameAccountId: "KR_FAKER_003", role: "MAIN" },
+    { ign: "Faker", fullName: "Lee Sang-hyeok", gameAccountId: "KR_FAKER_003", role: "CAPTAIN" },
     { ign: "Gumayusi", fullName: "Lee Min-hyeong", gameAccountId: "KR_GUMA_004", role: "MAIN" },
     { ign: "Keria", fullName: "Ryu Min-seok", gameAccountId: "KR_KERIA_005", role: "MAIN" }
   ],
   BLG: [
-    { ign: "Bin", fullName: "Chen Ze-bin", gameAccountId: "CN_BIN_006", role: "MAIN" },
-    { ign: "Knight", fullName: "Zhuo Ding", gameAccountId: "CN_KNIGHT_007", role: "MAIN" }
+    { ign: "Bin", fullName: "Chen Ze-bin", gameAccountId: "CN_BIN_006", role: "CAPTAIN" },
+    { ign: "Xun", fullName: "Peng Li-xun", gameAccountId: "CN_XUN_011", role: "MAIN" },
+    { ign: "Knight", fullName: "Zhuo Ding", gameAccountId: "CN_KNIGHT_007", role: "MAIN" },
+    { ign: "Elk", fullName: "Zhao Jia-hao", gameAccountId: "CN_ELK_012", role: "MAIN" },
+    { ign: "ON", fullName: "Luo Wen-jun", gameAccountId: "CN_ON_013", role: "MAIN" }
   ],
   WBG: [
-    { ign: "Xiaohu", fullName: "Li Yuan-hao", gameAccountId: "CN_XIAOHU_008", role: "MAIN" }
+    { ign: "Breathe", fullName: "Chen Chen", gameAccountId: "CN_BREATHE_014", role: "MAIN" },
+    { ign: "Tarzan", fullName: "Lee Seung-yong", gameAccountId: "CN_TARZAN_015", role: "MAIN" },
+    { ign: "Xiaohu", fullName: "Li Yuan-hao", gameAccountId: "CN_XIAOHU_008", role: "CAPTAIN" },
+    { ign: "Light", fullName: "Wang Guang-yu", gameAccountId: "CN_LIGHT_016", role: "MAIN" },
+    { ign: "Crisp", fullName: "Liu Qing-song", gameAccountId: "CN_CRISP_017", role: "MAIN" }
   ],
   LOS: [
-    { ign: "Thebausffs", fullName: "Simon Hofverberg", gameAccountId: "EU_BAUS_009", role: "MAIN" }
+    { ign: "Thebausffs", fullName: "Simon Hofverberg", gameAccountId: "EU_BAUS_009", role: "CAPTAIN" },
+    { ign: "Velja", fullName: "Veljko Čamdžić", gameAccountId: "EU_VELJA_018", role: "MAIN" },
+    { ign: "Nemesis", fullName: "Tim Lipovšek", gameAccountId: "EU_NEMESIS_019", role: "MAIN" },
+    { ign: "Crownie", fullName: "Juš Marušič", gameAccountId: "EU_CROWNIE_020", role: "MAIN" },
+    { ign: "Rekkles", fullName: "Carl Martin Erik Larsson", gameAccountId: "EU_REKKLES_021", role: "MAIN" }
   ],
   LR: [
-    { ign: "Thebausffs", fullName: "Simon Hofverberg", gameAccountId: "EU_BAUS_009", role: "MAIN" }
+    { ign: "Thebausffs", fullName: "Simon Hofverberg", gameAccountId: "EU_BAUS_009", role: "CAPTAIN" },
+    { ign: "Velja", fullName: "Veljko Čamdžić", gameAccountId: "EU_VELJA_018", role: "MAIN" },
+    { ign: "Nemesis", fullName: "Tim Lipovšek", gameAccountId: "EU_NEMESIS_019", role: "MAIN" },
+    { ign: "Crownie", fullName: "Juš Marušič", gameAccountId: "EU_CROWNIE_020", role: "MAIN" },
+    { ign: "Rekkles", fullName: "Carl Martin Erik Larsson", gameAccountId: "EU_REKKLES_021", role: "MAIN" }
   ],
   GAM: [
-    { ign: "Levi", fullName: "Đỗ Duy Khánh", gameAccountId: "VN_LEVI_010", role: "MAIN" }
+    { ign: "Kiaya", fullName: "Trần Duy Sang", gameAccountId: "VN_KIAYA_022", role: "MAIN" },
+    { ign: "Levi", fullName: "Đỗ Duy Khánh", gameAccountId: "VN_LEVI_010", role: "CAPTAIN" },
+    { ign: "Emo", fullName: "Nguyễn Thái Vinh", gameAccountId: "VN_EMO_023", role: "MAIN" },
+    { ign: "EasyLove", fullName: "Hứa Thành An", gameAccountId: "VN_EASYLOVE_024", role: "MAIN" },
+    { ign: "Elio", fullName: "Phạm Thạch Nhân Băng", gameAccountId: "VN_ELIO_025", role: "MAIN" }
+  ],
+  TSW: [
+    { ign: "Hiro02", fullName: "Nguyễn Hoàng Sơn", gameAccountId: "VN_HIRO02_026", role: "CAPTAIN" },
+    { ign: "Hizto", fullName: "Lê Văn Hậu", gameAccountId: "VN_HIZTO_027", role: "MAIN" },
+    { ign: "Dire", fullName: "Trần Duy Đức", gameAccountId: "VN_DIRE_028", role: "MAIN" },
+    { ign: "Eddie", fullName: "Hoàng Công Nghĩa", gameAccountId: "VN_EDDIE_029", role: "MAIN" },
+    { ign: "Taki", fullName: "Đinh Anh Tài", gameAccountId: "VN_TAKI_030", role: "MAIN" }
   ]
 };
 
@@ -213,15 +239,36 @@ function normalizeRosterMember(m) {
   };
 }
 
+function buildTeamRoster(tag, rawRoster) {
+  const normalizedDb = Array.isArray(rawRoster) ? rawRoster.map(normalizeRosterMember) : [];
+  const defaults = DEFAULT_ROSTERS_BY_TAG[tag]
+    ? DEFAULT_ROSTERS_BY_TAG[tag].map(normalizeRosterMember)
+    : [];
+
+  if (!defaults.length) return normalizedDb;
+
+  const merged = [...normalizedDb];
+  for (const member of defaults) {
+    if (merged.length >= 5) break;
+    const exists = merged.some(
+      (p) =>
+        (p.ign || "").toLowerCase() === (member.ign || "").toLowerCase() ||
+        (p.gameAccountId || "").toUpperCase() === (member.gameAccountId || "").toUpperCase()
+    );
+    if (!exists) {
+      merged.push(member);
+    }
+  }
+  return merged;
+}
+
 function normalizeTeam(team, index, dbRoster = null) {
   const tag = (team.teamTag ?? team.team_tag ?? team.tag ?? `TM${index + 1}`).toUpperCase();
   const captainObj = team.captain ?? team.captainUser;
-  const roster = Array.isArray(dbRoster)
-    ? dbRoster.map(normalizeRosterMember)
+  const sourceRoster = Array.isArray(dbRoster)
+    ? dbRoster
     : Array.isArray(team.players)
-    ? team.players.map(normalizeRosterMember)
-    : DEFAULT_ROSTERS_BY_TAG[tag]
-    ? [...DEFAULT_ROSTERS_BY_TAG[tag]]
+    ? team.players
     : [];
 
   return {
@@ -230,7 +277,7 @@ function normalizeTeam(team, index, dbRoster = null) {
     name: team.teamName ?? team.team_name ?? team.name ?? "Đội tuyển mới",
     country: team.country ?? team.region ?? "Việt Nam",
     captain: captainObj?.fullName ?? team.captainName ?? team.captain ?? `Đội trưởng ${tag}`,
-    players: roster
+    players: buildTeamRoster(tag, sourceRoster)
   };
 }
 
@@ -640,7 +687,7 @@ async function initTeamsPage() {
     if (typeof ApiService.getTeamRoster === "function") {
       const latestRoster = await ApiService.getTeamRoster(teamId);
       if (Array.isArray(latestRoster)) {
-        team.players = latestRoster.map(normalizeRosterMember);
+        team.players = buildTeamRoster(team.tag, latestRoster);
       }
     }
     renderRosterModalBody(team);

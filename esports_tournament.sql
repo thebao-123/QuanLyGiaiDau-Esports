@@ -1537,3 +1537,135 @@ WHERE (m.match_code LIKE 'VCT26-%' OR m.match_code LIKE 'VCS27%')
       WHERE mr.match_id = m.match_id AND mr.referee_user_id = @ref_id
   );
 
+-- =================================================================
+-- BỔ SUNG ĐỘI HÌNH ĐỦ 5 THÀNH VIÊN CHO TOÀN BỘ CÁC ĐỘI TUYỂN
+-- =================================================================
+SET @blg_id := (SELECT team_id FROM teams WHERE UPPER(team_tag) = 'BLG' LIMIT 1);
+SET @wbg_id := (SELECT team_id FROM teams WHERE UPPER(team_tag) = 'WBG' LIMIT 1);
+SET @los_id := (SELECT team_id FROM teams WHERE UPPER(team_tag) = 'LOS' LIMIT 1);
+SET @gam_id := (SELECT team_id FROM teams WHERE UPPER(team_tag) = 'GAM' LIMIT 1);
+SET @tsw_id := (SELECT team_id FROM teams WHERE UPPER(team_tag) = 'TSW' LIMIT 1);
+
+-- 1. Thêm 20 tuyển thủ mới vào bảng players (tránh trùng game_account_id)
+-- BLG (bổ sung 3 thành viên: Xun, Elk, ON)
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Peng Li-xun', 'Xun', 'CN_XUN_011' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'CN_XUN_011');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Zhao Jia-hao', 'Elk', 'CN_ELK_012' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'CN_ELK_012');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Luo Wen-jun', 'ON', 'CN_ON_013' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'CN_ON_013');
+
+-- WBG (bổ sung 4 thành viên: Breathe, Tarzan, Light, Crisp)
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Chen Chen', 'Breathe', 'CN_BREATHE_014' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'CN_BREATHE_014');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Lee Seung-yong', 'Tarzan', 'CN_TARZAN_015' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'CN_TARZAN_015');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Wang Guang-yu', 'Light', 'CN_LIGHT_016' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'CN_LIGHT_016');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Liu Qing-song', 'Crisp', 'CN_CRISP_017' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'CN_CRISP_017');
+
+-- LOS - Los Ratones (bổ sung 4 thành viên: Velja, Nemesis, Crownie, Rekkles)
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Veljko Čamdžić', 'Velja', 'EU_VELJA_018' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'EU_VELJA_018');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Tim Lipovšek', 'Nemesis', 'EU_NEMESIS_019' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'EU_NEMESIS_019');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Juš Marušič', 'Crownie', 'EU_CROWNIE_020' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'EU_CROWNIE_020');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Carl Martin Erik Larsson', 'Rekkles', 'EU_REKKLES_021' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'EU_REKKLES_021');
+
+-- GAM Esports (bổ sung 4 thành viên: Kiaya, Emo, EasyLove, Elio)
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Trần Duy Sang', 'Kiaya', 'VN_KIAYA_022' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'VN_KIAYA_022');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Nguyễn Thái Vinh', 'Emo', 'VN_EMO_023' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'VN_EMO_023');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Hứa Thành An', 'EasyLove', 'VN_EASYLOVE_024' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'VN_EASYLOVE_024');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Phạm Thạch Nhân Băng', 'Elio', 'VN_ELIO_025' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'VN_ELIO_025');
+
+-- TSW - Team Secret Whales (thêm đủ 5 thành viên: Hiro02, Hizto, Dire, Eddie, Taki)
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Nguyễn Hoàng Sơn', 'Hiro02', 'VN_HIRO02_026' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'VN_HIRO02_026');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Lê Văn Hậu', 'Hizto', 'VN_HIZTO_027' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'VN_HIZTO_027');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Trần Duy Đức', 'Dire', 'VN_DIRE_028' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'VN_DIRE_028');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Hoàng Công Nghĩa', 'Eddie', 'VN_EDDIE_029' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'VN_EDDIE_029');
+
+INSERT INTO players (player_name, in_game_name, game_account_id)
+SELECT 'Đinh Anh Tài', 'Taki', 'VN_TAKI_030' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM players WHERE game_account_id = 'VN_TAKI_030');
+
+-- 2. Gán tuyển thủ vào bảng team_members cho từng đội
+-- BLG
+INSERT INTO team_members (team_id, player_id, member_role, joined_at)
+SELECT @blg_id, p.player_id, 'MAIN', NOW()
+FROM players p
+WHERE @blg_id IS NOT NULL AND p.game_account_id IN ('CN_XUN_011', 'CN_ELK_012', 'CN_ON_013')
+  AND NOT EXISTS (SELECT 1 FROM team_members tm WHERE tm.team_id = @blg_id AND tm.player_id = p.player_id);
+
+-- WBG
+INSERT INTO team_members (team_id, player_id, member_role, joined_at)
+SELECT @wbg_id, p.player_id, 'MAIN', NOW()
+FROM players p
+WHERE @wbg_id IS NOT NULL AND p.game_account_id IN ('CN_BREATHE_014', 'CN_TARZAN_015', 'CN_LIGHT_016', 'CN_CRISP_017')
+  AND NOT EXISTS (SELECT 1 FROM team_members tm WHERE tm.team_id = @wbg_id AND tm.player_id = p.player_id);
+
+-- LOS
+INSERT INTO team_members (team_id, player_id, member_role, joined_at)
+SELECT @los_id, p.player_id, 'MAIN', NOW()
+FROM players p
+WHERE @los_id IS NOT NULL AND p.game_account_id IN ('EU_VELJA_018', 'EU_NEMESIS_019', 'EU_CROWNIE_020', 'EU_REKKLES_021')
+  AND NOT EXISTS (SELECT 1 FROM team_members tm WHERE tm.team_id = @los_id AND tm.player_id = p.player_id);
+
+-- GAM
+INSERT INTO team_members (team_id, player_id, member_role, joined_at)
+SELECT @gam_id, p.player_id, 'MAIN', NOW()
+FROM players p
+WHERE @gam_id IS NOT NULL AND p.game_account_id IN ('VN_KIAYA_022', 'VN_EMO_023', 'VN_EASYLOVE_024', 'VN_ELIO_025')
+  AND NOT EXISTS (SELECT 1 FROM team_members tm WHERE tm.team_id = @gam_id AND tm.player_id = p.player_id);
+
+-- TSW
+INSERT INTO team_members (team_id, player_id, member_role, joined_at)
+SELECT @tsw_id, p.player_id,
+       CASE WHEN p.game_account_id = 'VN_HIRO02_026' THEN 'CAPTAIN' ELSE 'MAIN' END,
+       NOW()
+FROM players p
+WHERE @tsw_id IS NOT NULL AND p.game_account_id IN ('VN_HIRO02_026', 'VN_HIZTO_027', 'VN_DIRE_028', 'VN_EDDIE_029', 'VN_TAKI_030')
+  AND NOT EXISTS (SELECT 1 FROM team_members tm WHERE tm.team_id = @tsw_id AND tm.player_id = p.player_id);
