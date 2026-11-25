@@ -1284,3 +1284,255 @@ WHERE (m.match_code LIKE 'MSI26-%' OR m.match_code LIKE 'LCK26-%')
       SELECT 1 FROM match_referees mr
       WHERE mr.match_id = m.match_id AND mr.referee_user_id = @ref_id
   );
+
+  -- =================================================================
+-- BỔ SUNG DỮ LIỆU CHO VALORANT CHAMPIONS 2026 & CÁC GIẢI VCS 2027
+-- =================================================================
+SET @vct_id := (
+    SELECT tournament_id FROM tournaments
+    WHERE UPPER(tournament_name) LIKE '%VALORANT CHAMPIONS 2026%'
+    ORDER BY tournament_id LIMIT 1
+);
+SET @vcs_sp_id := (
+    SELECT tournament_id FROM tournaments
+    WHERE UPPER(tournament_name) LIKE '%VCS XUÂN 2027%'
+    ORDER BY tournament_id LIMIT 1
+);
+SET @vcs_wn_id := (
+    SELECT tournament_id FROM tournaments
+    WHERE UPPER(tournament_name) LIKE '%VCS ĐÔNG 2027%'
+    ORDER BY tournament_id LIMIT 1
+);
+
+SET @org_id := COALESCE((SELECT user_id FROM users WHERE role = 'ORGANIZER' LIMIT 1), 2);
+SET @ref_id := COALESCE((SELECT user_id FROM users WHERE role = 'REFEREE' LIMIT 1), 4);
+
+SET @t1_id  := (SELECT team_id FROM teams WHERE team_tag = 'T1'  LIMIT 1);
+SET @blg_id := (SELECT team_id FROM teams WHERE team_tag = 'BLG' LIMIT 1);
+SET @wbg_id := (SELECT team_id FROM teams WHERE team_tag = 'WBG' LIMIT 1);
+SET @los_id := (SELECT team_id FROM teams WHERE team_tag = 'LOS' LIMIT 1);
+SET @gam_id := (SELECT team_id FROM teams WHERE team_tag = 'GAM' LIMIT 1);
+
+-- -----------------------------------------------------------------
+-- PHẦN 1: GIẢI VALORANT CHAMPIONS 2026 (8 TRẬN ĐẤU & 8 KẾT QUẢ)
+-- -----------------------------------------------------------------
+INSERT INTO participation_applications (tournament_id, team_id, application_status, submitted_at, reviewed_by, reviewed_at, note)
+SELECT @vct_id, t.team_id, 'APPROVED', '2026-07-15 10:00:00', @org_id, '2026-07-16 10:00:00',
+       'Đủ điều kiện tham dự VALORANT Champions 2026'
+FROM teams t
+WHERE @vct_id IS NOT NULL AND t.team_tag IN ('T1', 'BLG', 'WBG', 'LOS', 'GAM')
+  AND NOT EXISTS (SELECT 1 FROM participation_applications pa WHERE pa.tournament_id = @vct_id AND pa.team_id = t.team_id);
+
+INSERT INTO stages (tournament_id, stage_name, stage_type, stage_order, start_date, end_date, stage_status)
+SELECT @vct_id, 'Vòng Bảng VALORANT Champions', 'GROUP_STAGE', 1, '2026-08-01 17:00:00', '2026-08-12 22:00:00', 'COMPLETED'
+FROM DUAL WHERE @vct_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM stages WHERE tournament_id = @vct_id AND stage_order = 1);
+
+INSERT INTO stages (tournament_id, stage_name, stage_type, stage_order, start_date, end_date, stage_status)
+SELECT @vct_id, 'Playoffs VALORANT Champions', 'PLAYOFF', 2, '2026-08-15 17:00:00', '2026-08-24 22:00:00', 'COMPLETED'
+FROM DUAL WHERE @vct_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM stages WHERE tournament_id = @vct_id AND stage_order = 2);
+
+SET @vct_s1 := (SELECT stage_id FROM stages WHERE tournament_id = @vct_id AND stage_order = 1 LIMIT 1);
+SET @vct_s2 := (SELECT stage_id FROM stages WHERE tournament_id = @vct_id AND stage_order = 2 LIMIT 1);
+
+INSERT INTO team_stage_records (stage_id, team_id, seed_number, wins, losses, stage_team_status)
+SELECT @vct_s1, t.team_id,
+       CASE t.team_tag WHEN 'T1' THEN 1 WHEN 'BLG' THEN 2 WHEN 'WBG' THEN 3 WHEN 'LOS' THEN 4 WHEN 'GAM' THEN 5 END,
+       CASE t.team_tag WHEN 'T1' THEN 2 WHEN 'BLG' THEN 2 ELSE 1 END,
+       CASE t.team_tag WHEN 'T1' THEN 0 WHEN 'BLG' THEN 0 ELSE 1 END,
+       'ACTIVE'
+FROM teams t
+WHERE @vct_s1 IS NOT NULL AND t.team_tag IN ('T1', 'BLG', 'WBG', 'LOS', 'GAM')
+  AND NOT EXISTS (SELECT 1 FROM team_stage_records r WHERE r.stage_id = @vct_s1 AND r.team_id = t.team_id);
+
+INSERT INTO team_stage_records (stage_id, team_id, seed_number, wins, losses, stage_team_status)
+SELECT @vct_s2, t.team_id,
+       CASE t.team_tag WHEN 'T1' THEN 1 WHEN 'BLG' THEN 2 WHEN 'WBG' THEN 3 WHEN 'GAM' THEN 4 END,
+       CASE t.team_tag WHEN 'T1' THEN 2 WHEN 'BLG' THEN 1 ELSE 0 END,
+       CASE t.team_tag WHEN 'T1' THEN 0 WHEN 'BLG' THEN 1 ELSE 1 END,
+       'ACTIVE'
+FROM teams t
+WHERE @vct_s2 IS NOT NULL AND t.team_tag IN ('T1', 'BLG', 'WBG', 'GAM')
+  AND NOT EXISTS (SELECT 1 FROM team_stage_records r WHERE r.stage_id = @vct_s2 AND r.team_id = t.team_id);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @vct_s1, 1, 'Bảng A - Vòng Mở Màn', '2026-08-01 17:00:00', 'COMPLETED'
+FROM DUAL WHERE @vct_s1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @vct_s1 AND round_number = 1);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @vct_s1, 2, 'Bảng B - Vòng Quyết Định', '2026-08-06 17:00:00', 'COMPLETED'
+FROM DUAL WHERE @vct_s1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @vct_s1 AND round_number = 2);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @vct_s2, 1, 'Bán kết VALORANT Champions', '2026-08-18 17:00:00', 'COMPLETED'
+FROM DUAL WHERE @vct_s2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @vct_s2 AND round_number = 1);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @vct_s2, 2, 'Chung kết Tổng VALORANT Champions', '2026-08-24 18:00:00', 'COMPLETED'
+FROM DUAL WHERE @vct_s2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @vct_s2 AND round_number = 2);
+
+SET @vct_r1 := (SELECT round_id FROM rounds WHERE stage_id = @vct_s1 AND round_number = 1 LIMIT 1);
+SET @vct_r2 := (SELECT round_id FROM rounds WHERE stage_id = @vct_s1 AND round_number = 2 LIMIT 1);
+SET @vct_r3 := (SELECT round_id FROM rounds WHERE stage_id = @vct_s2 AND round_number = 1 LIMIT 1);
+SET @vct_r4 := (SELECT round_id FROM rounds WHERE stage_id = @vct_s2 AND round_number = 2 LIMIT 1);
+
+-- 8 trận đấu VALORANT Champions 2026
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @vct_r1, @t1_id, @los_id, 'VCT26-GA-M1', '2026-08-01 17:00:00', 'INSPIRE Arena, Incheon', 3, 'COMPLETED'
+FROM DUAL WHERE @vct_r1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'VCT26-GA-M1');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @vct_r1, @blg_id, @gam_id, 'VCT26-GA-M2', '2026-08-01 20:00:00', 'INSPIRE Arena, Incheon', 3, 'COMPLETED'
+FROM DUAL WHERE @vct_r1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'VCT26-GA-M2');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @vct_r2, @wbg_id, @gam_id, 'VCT26-GB-M1', '2026-08-06 17:00:00', 'INSPIRE Arena, Incheon', 3, 'COMPLETED'
+FROM DUAL WHERE @vct_r2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'VCT26-GB-M1');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @vct_r2, @t1_id, @wbg_id, 'VCT26-GB-M2', '2026-08-06 20:00:00', 'INSPIRE Arena, Incheon', 3, 'COMPLETED'
+FROM DUAL WHERE @vct_r2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'VCT26-GB-M2');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @vct_r3, @t1_id, @gam_id, 'VCT26-SF-M1', '2026-08-18 17:00:00', 'INSPIRE Arena, Incheon', 5, 'COMPLETED'
+FROM DUAL WHERE @vct_r3 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'VCT26-SF-M1');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @vct_r3, @blg_id, @wbg_id, 'VCT26-SF-M2', '2026-08-19 17:00:00', 'INSPIRE Arena, Incheon', 5, 'COMPLETED'
+FROM DUAL WHERE @vct_r3 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'VCT26-SF-M2');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @vct_r4, @gam_id, @wbg_id, 'VCT26-3RD', '2026-08-23 17:00:00', 'INSPIRE Arena, Incheon', 5, 'COMPLETED'
+FROM DUAL WHERE @vct_r4 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'VCT26-3RD');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @vct_r4, @t1_id, @blg_id, 'VCT26-FINAL', '2026-08-24 18:00:00', 'INSPIRE Arena, Incheon', 5, 'COMPLETED'
+FROM DUAL WHERE @vct_r4 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'VCT26-FINAL');
+
+-- 8 kết quả VALORANT Champions 2026
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'VCT26-GA-M1' LIMIT 1), 2, 0, @t1_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'T1 thắng áp đảo trên 2 bản đồ Ascent và Haven'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'VCT26-GA-M1');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'VCT26-GA-M2' LIMIT 1), 2, 1, @blg_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'BLG vượt qua GAM sau hiệp phụ căng thẳng ở bản đồ 3'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'VCT26-GA-M2');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'VCT26-GB-M1' LIMIT 1), 1, 2, @gam_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'GAM lội ngược dòng giành vé vào Playoffs'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'VCT26-GB-M1');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'VCT26-GB-M2' LIMIT 1), 2, 0, @t1_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'T1 đứng đầu bảng đấu với thành tích bất bại'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'VCT26-GB-M2');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'VCT26-SF-M1' LIMIT 1), 3, 1, @t1_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'T1 giành quyền vào Chung kết Tổng VALORANT Champions'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'VCT26-SF-M1');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'VCT26-SF-M2' LIMIT 1), 3, 2, @blg_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'BLG đánh bại Weibo Gaming 3-2 sau 5 bản đồ'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'VCT26-SF-M2');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'VCT26-3RD' LIMIT 1), 3, 1, @gam_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'GAM giành hạng 3 chung cuộc VALORANT Champions 2026'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'VCT26-3RD');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'VCT26-FINAL' LIMIT 1), 3, 2, @t1_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'T1 vô địch VALORANT Champions 2026 sau loạt BO5 kịch tính'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'VCT26-FINAL');
+
+-- -----------------------------------------------------------------
+-- PHẦN 2: GIẢI VCS XUÂN 2027 & VCS ĐÔNG 2027 (LỊCH THI ĐẤU SẮP DIỄN RA)
+-- -----------------------------------------------------------------
+INSERT INTO stages (tournament_id, stage_name, stage_type, stage_order, start_date, end_date, stage_status)
+SELECT @vcs_sp_id, 'Vòng Bảng VCS Xuân 2027', 'GROUP_STAGE', 1, '2027-01-15 17:00:00', '2027-03-05 22:00:00', 'UPCOMING'
+FROM DUAL WHERE @vcs_sp_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM stages WHERE tournament_id = @vcs_sp_id AND stage_order = 1);
+
+INSERT INTO stages (tournament_id, stage_name, stage_type, stage_order, start_date, end_date, stage_status)
+SELECT @vcs_sp_id, 'Playoffs VCS Xuân 2027', 'PLAYOFF', 2, '2027-03-10 17:00:00', '2027-03-25 22:00:00', 'UPCOMING'
+FROM DUAL WHERE @vcs_sp_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM stages WHERE tournament_id = @vcs_sp_id AND stage_order = 2);
+
+SET @vcs_sp_s1 := (SELECT stage_id FROM stages WHERE tournament_id = @vcs_sp_id AND stage_order = 1 LIMIT 1);
+SET @vcs_sp_s2 := (SELECT stage_id FROM stages WHERE tournament_id = @vcs_sp_id AND stage_order = 2 LIMIT 1);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @vcs_sp_s1, 1, 'Tuần 1 - VCS Xuân 2027', '2027-01-15 17:00:00', 'UPCOMING'
+FROM DUAL WHERE @vcs_sp_s1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @vcs_sp_s1 AND round_number = 1);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @vcs_sp_s2, 1, 'Chung kết VCS Xuân 2027', '2027-03-25 18:00:00', 'UPCOMING'
+FROM DUAL WHERE @vcs_sp_s2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @vcs_sp_s2 AND round_number = 1);
+
+SET @vcs_sp_r1 := (SELECT round_id FROM rounds WHERE stage_id = @vcs_sp_s1 AND round_number = 1 LIMIT 1);
+SET @vcs_sp_r2 := (SELECT round_id FROM rounds WHERE stage_id = @vcs_sp_s2 AND round_number = 1 LIMIT 1);
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @vcs_sp_r1, @gam_id, @los_id, 'VCS27SP-W1-M1', '2027-01-15 17:00:00', 'GG Stadium, TP.HCM', 3, 'SCHEDULED'
+FROM DUAL WHERE @vcs_sp_r1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'VCS27SP-W1-M1');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @vcs_sp_r1, @t1_id, @wbg_id, 'VCS27SP-W1-M2', '2027-01-16 17:00:00', 'GG Stadium, TP.HCM', 3, 'SCHEDULED'
+FROM DUAL WHERE @vcs_sp_r1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'VCS27SP-W1-M2');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @vcs_sp_r2, @gam_id, @t1_id, 'VCS27SP-FINAL', '2027-03-25 18:00:00', 'Nhà thi đấu Nguyễn Du, TP.HCM', 5, 'SCHEDULED'
+FROM DUAL WHERE @vcs_sp_r2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'VCS27SP-FINAL');
+
+-- VCS Đông 2027
+INSERT INTO stages (tournament_id, stage_name, stage_type, stage_order, start_date, end_date, stage_status)
+SELECT @vcs_wn_id, 'Vòng Bảng VCS Đông 2027', 'GROUP_STAGE', 1, '2027-06-15 17:00:00', '2027-08-05 22:00:00', 'UPCOMING'
+FROM DUAL WHERE @vcs_wn_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM stages WHERE tournament_id = @vcs_wn_id AND stage_order = 1);
+
+INSERT INTO stages (tournament_id, stage_name, stage_type, stage_order, start_date, end_date, stage_status)
+SELECT @vcs_wn_id, 'Playoffs VCS Đông 2027', 'PLAYOFF', 2, '2027-08-10 17:00:00', '2027-08-25 22:00:00', 'UPCOMING'
+FROM DUAL WHERE @vcs_wn_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM stages WHERE tournament_id = @vcs_wn_id AND stage_order = 2);
+
+SET @vcs_wn_s1 := (SELECT stage_id FROM stages WHERE tournament_id = @vcs_wn_id AND stage_order = 1 LIMIT 1);
+SET @vcs_wn_s2 := (SELECT stage_id FROM stages WHERE tournament_id = @vcs_wn_id AND stage_order = 2 LIMIT 1);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @vcs_wn_s1, 1, 'Tuần 1 - VCS Đông 2027', '2027-06-15 17:00:00', 'UPCOMING'
+FROM DUAL WHERE @vcs_wn_s1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @vcs_wn_s1 AND round_number = 1);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @vcs_wn_s2, 1, 'Chung kết VCS Đông 2027', '2027-08-25 18:00:00', 'UPCOMING'
+FROM DUAL WHERE @vcs_wn_s2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @vcs_wn_s2 AND round_number = 1);
+
+SET @vcs_wn_r1 := (SELECT round_id FROM rounds WHERE stage_id = @vcs_wn_s1 AND round_number = 1 LIMIT 1);
+SET @vcs_wn_r2 := (SELECT round_id FROM rounds WHERE stage_id = @vcs_wn_s2 AND round_number = 1 LIMIT 1);
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @vcs_wn_r1, @gam_id, @blg_id, 'VCS27WN-W1-M1', '2027-06-15 17:00:00', 'GG Stadium, TP.HCM', 3, 'SCHEDULED'
+FROM DUAL WHERE @vcs_wn_r1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'VCS27WN-W1-M1');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @vcs_wn_r1, @los_id, @wbg_id, 'VCS27WN-W1-M2', '2027-06-16 17:00:00', 'GG Stadium, TP.HCM', 3, 'SCHEDULED'
+FROM DUAL WHERE @vcs_wn_r1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'VCS27WN-W1-M2');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @vcs_wn_r2, @gam_id, @blg_id, 'VCS27WN-FINAL', '2027-08-25 18:00:00', 'Nhà thi đấu Nguyễn Du, TP.HCM', 5, 'SCHEDULED'
+FROM DUAL WHERE @vcs_wn_r2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'VCS27WN-FINAL');
+
+-- Phân công trọng tài Trần Minh Trọng cho toàn bộ các trận mới
+INSERT INTO match_referees (match_id, referee_user_id)
+SELECT m.match_id, @ref_id
+FROM matches m
+WHERE (m.match_code LIKE 'VCT26-%' OR m.match_code LIKE 'VCS27%')
+  AND NOT EXISTS (
+      SELECT 1 FROM match_referees mr
+      WHERE mr.match_id = m.match_id AND mr.referee_user_id = @ref_id
+  );
