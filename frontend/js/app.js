@@ -41,6 +41,104 @@ const DEFAULT_ROSTERS_BY_TAG = {
   ]
 };
 
+// ===== ÁNH XẠ QUỐC GIA <-> KHU VỰC ESPORTS =====
+const REGION_COUNTRY_GROUPS = [
+  {
+    code: "LCK",
+    label: "Hàn Quốc (LCK)",
+    aliases: ["han quoc", "korea", "south korea", "kr", "lck"]
+  },
+  {
+    code: "LPL",
+    label: "Trung Quốc (LPL)",
+    aliases: ["trung quoc", "china", "cn", "lpl"]
+  },
+  {
+    code: "VCS",
+    label: "Việt Nam (VCS)",
+    aliases: ["viet nam", "vietnam", "vn", "vcs"]
+  },
+  {
+    code: "LEC",
+    label: "Châu Âu (LEC)",
+    aliases: ["chau au", "europe", "eu", "emea", "lec"]
+  },
+  {
+    code: "LCS",
+    label: "Bắc Mỹ (LCS / LTA)",
+    aliases: ["bac my", "my", "usa", "us", "na", "north america", "lcs", "lta"]
+  },
+  {
+    code: "LCP",
+    label: "Châu Á - TBD (LCP / PCS)",
+    aliases: ["chau a", "chau a - tbd", "dai loan", "nhat ban", "apac", "tw", "jp", "pcs", "ljl", "lcp"]
+  },
+  {
+    code: "CBLOL",
+    label: "Brazil (CBLOL)",
+    aliases: ["brazil", "br", "cblol"]
+  }
+];
+
+function normalizeSearchText(str) {
+  return String(str || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .trim();
+}
+
+function getRegionGroup(value) {
+  const norm = normalizeSearchText(value);
+  if (!norm) return null;
+  return REGION_COUNTRY_GROUPS.find((g) => g.aliases.some((alias) => alias === norm)) || null;
+}
+
+function formatTeamRegionLabel(rawCountry) {
+  const group = getRegionGroup(rawCountry);
+  return group ? group.label : rawCountry || "—";
+}
+
+function matchesCountryFilter(teamCountry, filterCountry) {
+  if (!filterCountry || filterCountry === "ALL") return true;
+  const teamGroup = getRegionGroup(teamCountry);
+  const filterGroup = getRegionGroup(filterCountry);
+
+  if (teamGroup && filterGroup) {
+    return teamGroup.code === filterGroup.code;
+  }
+  return normalizeSearchText(teamCountry) === normalizeSearchText(filterCountry);
+}
+
+function matchesTeamKeyword(team, keyword) {
+  const q = normalizeSearchText(keyword);
+  if (!q) return true;
+
+  const name = normalizeSearchText(team.name);
+  const tag = normalizeSearchText(team.tag);
+  const captain = normalizeSearchText(team.captain);
+  const rawCountry = normalizeSearchText(team.country);
+
+  if (
+    name.includes(q) ||
+    tag.includes(q) ||
+    captain.includes(q) ||
+    rawCountry.includes(q)
+  ) {
+    return true;
+  }
+
+  // Khớp theo tên quốc gia hoặc mã khu vực đồng nghĩa (VD: gõ "han quoc" -> ra LCK)
+  if (q.length >= 2) {
+    const group = getRegionGroup(team.country);
+    if (group && group.aliases.some((alias) => alias.includes(q) || q.includes(alias))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function getCurrentUser() {
   return JSON.parse(localStorage.getItem("currentUser") || "null");
 }
@@ -436,7 +534,9 @@ async function initTeamsPage() {
   function updateTeamKpis() {
     const totalPlayers = allTeams.reduce((sum, t) => sum + t.players.length, 0);
     const pendingApps = applications.filter((a) => a.status === "PENDING").length;
-    const countries = new Set(allTeams.map((t) => t.country)).size;
+    const countries = new Set(
+      allTeams.map((t) => getRegionGroup(t.country)?.code || normalizeSearchText(t.country))
+    ).size;
 
     document.getElementById("kpi-total-teams").textContent = allTeams.length;
     document.getElementById("kpi-total-players").textContent = totalPlayers;
@@ -446,12 +546,12 @@ async function initTeamsPage() {
 
   function renderTeamsTable() {
     updateTeamKpis();
-    const keyword = (searchInput.value || "").toLowerCase().trim();
+    const keyword = searchInput.value || "";
     const filterCountry = countrySelect.value;
 
     const filtered = allTeams.filter((t) => {
-      const matchText = t.name.toLowerCase().includes(keyword) || t.tag.toLowerCase().includes(keyword);
-      const matchCountry = filterCountry === "ALL" || t.country === filterCountry;
+      const matchText = matchesTeamKeyword(t, keyword);
+      const matchCountry = matchesCountryFilter(t.country, filterCountry);
       return matchText && matchCountry;
     });
 
@@ -462,7 +562,7 @@ async function initTeamsPage() {
             <td>#${t.id}</td>
             <td><span class="badge badge-upcoming">[${t.tag}]</span></td>
             <td style="font-weight:600;">${t.name}</td>
-            <td>${t.country}</td>
+            <td>${formatTeamRegionLabel(t.country)}</td>
             <td>${t.captain}</td>
             <td>${t.players.length} tuyển thủ</td>
             <td>
@@ -637,6 +737,7 @@ window.initPage = async function (pageName) {
   if (pageName === "teams") await initTeamsPage();
   if (pageName === "accounts") await initAccountsPage();
 };
+
 // ===== KIỂM SOÁT CHẾ ĐỘ CHỈ XEM CHO TÀI KHOẢN KHÁCH (VIEWER) =====
 function isViewerAccount() {
   const user = getCurrentUser();

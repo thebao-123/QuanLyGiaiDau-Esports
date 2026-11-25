@@ -26,13 +26,15 @@
   <div class="card-header">
     <h3 class="card-title">Danh sách đội tuyển</h3>
     <div class="toolbar">
-      <input type="text" id="search-team" class="form-input" style="width:230px;" placeholder="Tìm tên đội hoặc Tag (VD: T1)..." />
-      <select id="filter-team-country" class="form-select" style="width:180px;">
-        <option value="ALL">Tất cả quốc gia</option>
-        <option value="Hàn Quốc">Hàn Quốc</option>
-        <option value="Trung Quốc">Trung Quốc</option>
-        <option value="Việt Nam">Việt Nam</option>
-        <option value="Châu Âu">Châu Âu</option>
+      <input type="text" id="search-team" class="form-input" style="width:270px;" placeholder="Tìm tên đội, Tag hoặc Quốc gia / Khu vực..." />
+      <select id="filter-team-country" class="form-select" style="width:205px;">
+        <option value="ALL">Tất cả quốc gia / khu vực</option>
+        <option value="Hàn Quốc">Hàn Quốc (LCK)</option>
+        <option value="Trung Quốc">Trung Quốc (LPL)</option>
+        <option value="Việt Nam">Việt Nam (VCS)</option>
+        <option value="Châu Âu">Châu Âu (LEC)</option>
+        <option value="Bắc Mỹ">Bắc Mỹ (LCS / LTA)</option>
+        <option value="Châu Á - TBD">Châu Á - TBD (LCP / PCS)</option>
       </select>
       <button id="btn-open-team-modal" class="btn btn-primary">+ Thêm đội tuyển</button>
     </div>
@@ -100,10 +102,12 @@
         <div class="form-group">
           <label class="form-label">Quốc gia / Khu vực *</label>
           <select id="inp-team-country" class="form-select">
-            <option value="Việt Nam">Việt Nam</option>
-            <option value="Hàn Quốc">Hàn Quốc</option>
-            <option value="Trung Quốc">Trung Quốc</option>
-            <option value="Châu Âu">Châu Âu</option>
+            <option value="Việt Nam">Việt Nam (VCS)</option>
+            <option value="Hàn Quốc">Hàn Quốc (LCK)</option>
+            <option value="Trung Quốc">Trung Quốc (LPL)</option>
+            <option value="Châu Âu">Châu Âu (LEC)</option>
+            <option value="Bắc Mỹ">Bắc Mỹ (LCS / LTA)</option>
+            <option value="Châu Á - TBD">Châu Á - TBD (LCP / PCS)</option>
           </select>
         </div>
       </div>
