@@ -1008,3 +1008,279 @@ INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, r
 SELECT (SELECT match_id FROM matches WHERE match_code = 'CKTG26-QF-M4' LIMIT 1), 3, 1, @los_id,
        'CONFIRMED', @cktg_ref_id, @cktg_org_id, NOW(), 'Đại diện châu Âu khuấy đảo sân khấu Tứ kết với thắng lợi 3-1'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'CKTG26-QF-M4');
+
+-- =================================================================
+-- BỔ SUNG THÊM 20 TRẬN ĐẤU VÀ 20 KẾT QUẢ (MSI 2026 & LCK MÙA HÈ 2026)
+-- =================================================================
+SET @msi_id := (SELECT tournament_id FROM tournaments WHERE tournament_id = 2 LIMIT 1);
+SET @lck_id := (SELECT tournament_id FROM tournaments WHERE tournament_id = 3 LIMIT 1);
+SET @org_id := COALESCE((SELECT user_id FROM users WHERE role = 'ORGANIZER' LIMIT 1), 2);
+SET @ref_id := COALESCE((SELECT user_id FROM users WHERE role = 'REFEREE' LIMIT 1), 4);
+
+SET @t1_id  := (SELECT team_id FROM teams WHERE team_tag = 'T1'  LIMIT 1);
+SET @blg_id := (SELECT team_id FROM teams WHERE team_tag = 'BLG' LIMIT 1);
+SET @wbg_id := (SELECT team_id FROM teams WHERE team_tag = 'WBG' LIMIT 1);
+SET @los_id := (SELECT team_id FROM teams WHERE team_tag = 'LOS' LIMIT 1);
+SET @gam_id := (SELECT team_id FROM teams WHERE team_tag = 'GAM' LIMIT 1);
+
+-- -----------------------------------------------------------------
+-- PHẦN A: 10 TRẬN ĐẤU & 10 KẾT QUẢ GIẢI MID-SEASON INVITATIONAL 2026
+-- -----------------------------------------------------------------
+INSERT INTO stages (tournament_id, stage_name, stage_type, stage_order, start_date, end_date, stage_status)
+SELECT @msi_id, 'Vòng Phân Nhánh MSI (Bracket Stage)', 'PLAYOFF', 1, '2026-05-05 18:00:00', '2026-05-19 23:00:00', 'COMPLETED'
+FROM DUAL WHERE @msi_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM stages WHERE tournament_id = @msi_id AND stage_order = 1);
+
+SET @msi_stage := (SELECT stage_id FROM stages WHERE tournament_id = @msi_id AND stage_order = 1 LIMIT 1);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @msi_stage, 1, 'Nhánh Thắng - Vòng 1', '2026-05-05 18:00:00', 'COMPLETED'
+FROM DUAL WHERE @msi_stage IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @msi_stage AND round_number = 1);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @msi_stage, 2, 'Nhánh Thua - Vòng 1 & 2', '2026-05-10 18:00:00', 'COMPLETED'
+FROM DUAL WHERE @msi_stage IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @msi_stage AND round_number = 2);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @msi_stage, 3, 'Chung kết Nhánh', '2026-05-15 18:00:00', 'COMPLETED'
+FROM DUAL WHERE @msi_stage IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @msi_stage AND round_number = 3);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @msi_stage, 4, 'Chung kết Tổng MSI 2026', '2026-05-19 18:00:00', 'COMPLETED'
+FROM DUAL WHERE @msi_stage IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @msi_stage AND round_number = 4);
+
+SET @msi_r1 := (SELECT round_id FROM rounds WHERE stage_id = @msi_stage AND round_number = 1 LIMIT 1);
+SET @msi_r2 := (SELECT round_id FROM rounds WHERE stage_id = @msi_stage AND round_number = 2 LIMIT 1);
+SET @msi_r3 := (SELECT round_id FROM rounds WHERE stage_id = @msi_stage AND round_number = 3 LIMIT 1);
+SET @msi_r4 := (SELECT round_id FROM rounds WHERE stage_id = @msi_stage AND round_number = 4 LIMIT 1);
+
+-- 10 trận MSI 2026
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @msi_r1, @t1_id, @gam_id, 'MSI26-UB1-M1', '2026-05-05 18:00:00', 'Chengdu Financial City Arena', 5, 'COMPLETED'
+FROM DUAL WHERE @msi_r1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'MSI26-UB1-M1');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @msi_r1, @blg_id, @los_id, 'MSI26-UB1-M2', '2026-05-06 18:00:00', 'Chengdu Financial City Arena', 5, 'COMPLETED'
+FROM DUAL WHERE @msi_r1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'MSI26-UB1-M2');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @msi_r1, @wbg_id, @gam_id, 'MSI26-UB1-M3', '2026-05-07 18:00:00', 'Chengdu Financial City Arena', 5, 'COMPLETED'
+FROM DUAL WHERE @msi_r1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'MSI26-UB1-M3');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @msi_r1, @t1_id, @wbg_id, 'MSI26-UB1-M4', '2026-05-08 18:00:00', 'Chengdu Financial City Arena', 5, 'COMPLETED'
+FROM DUAL WHERE @msi_r1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'MSI26-UB1-M4');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @msi_r2, @gam_id, @los_id, 'MSI26-LB-M1', '2026-05-10 18:00:00', 'Chengdu Financial City Arena', 5, 'COMPLETED'
+FROM DUAL WHERE @msi_r2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'MSI26-LB-M1');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @msi_r2, @wbg_id, @gam_id, 'MSI26-LB-M2', '2026-05-11 18:00:00', 'Chengdu Financial City Arena', 5, 'COMPLETED'
+FROM DUAL WHERE @msi_r2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'MSI26-LB-M2');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @msi_r2, @blg_id, @gam_id, 'MSI26-LB-M3', '2026-05-12 18:00:00', 'Chengdu Financial City Arena', 5, 'COMPLETED'
+FROM DUAL WHERE @msi_r2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'MSI26-LB-M3');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @msi_r3, @t1_id, @blg_id, 'MSI26-UB-FINAL', '2026-05-15 18:00:00', 'Chengdu Financial City Arena', 5, 'COMPLETED'
+FROM DUAL WHERE @msi_r3 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'MSI26-UB-FINAL');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @msi_r3, @blg_id, @wbg_id, 'MSI26-LB-FINAL', '2026-05-17 18:00:00', 'Chengdu Financial City Arena', 5, 'COMPLETED'
+FROM DUAL WHERE @msi_r3 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'MSI26-LB-FINAL');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @msi_r4, @t1_id, @blg_id, 'MSI26-FINAL', '2026-05-19 18:00:00', 'Chengdu Financial City Arena', 5, 'COMPLETED'
+FROM DUAL WHERE @msi_r4 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'MSI26-FINAL');
+
+-- 10 kết quả MSI 2026
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'MSI26-UB1-M1' LIMIT 1), 3, 0, @t1_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'T1 khởi đầu MSI 2026 suôn sẻ với chiến thắng 3-0'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'MSI26-UB1-M1');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'MSI26-UB1-M2' LIMIT 1), 3, 1, @blg_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'BLG áp đảo khu vực đường dưới trước đại diện LEC'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'MSI26-UB1-M2');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'MSI26-UB1-M3' LIMIT 1), 3, 2, @wbg_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'GAM kéo Weibo Gaming tới ván 5 quyết định'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'MSI26-UB1-M3');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'MSI26-UB1-M4' LIMIT 1), 3, 1, @t1_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'Oner kiểm soát hoàn toàn rừng giúp T1 thắng 3-1'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'MSI26-UB1-M4');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'MSI26-LB-M1' LIMIT 1), 3, 2, @gam_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'GAM lội ngược dòng ngoạn mục ở Nhánh Thua'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'MSI26-LB-M1');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'MSI26-LB-M2' LIMIT 1), 3, 1, @wbg_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'Xiaohu tỏa sáng trong các pha giao tranh hang Rồng'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'MSI26-LB-M2');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'MSI26-LB-M3' LIMIT 1), 3, 0, @blg_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'BLG thể hiện sức mạnh vượt trội tại Nhánh Thua'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'MSI26-LB-M3');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'MSI26-UB-FINAL' LIMIT 1), 3, 2, @t1_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'T1 giành tấm vé đầu tiên vào Chung kết Tổng MSI 2026'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'MSI26-UB-FINAL');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'MSI26-LB-FINAL' LIMIT 1), 3, 1, @blg_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'BLG tái đấu T1 sau khi vượt qua Weibo Gaming 3-1'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'MSI26-LB-FINAL');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'MSI26-FINAL' LIMIT 1), 3, 1, @t1_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'T1 lên ngôi vô địch MSI 2026 thuyết phục'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'MSI26-FINAL');
+
+-- -----------------------------------------------------------------
+-- PHẦN B: 10 TRẬN ĐẤU & 10 KẾT QUẢ GIẢI LCK MÙA HÈ 2026
+-- -----------------------------------------------------------------
+INSERT INTO stages (tournament_id, stage_name, stage_type, stage_order, start_date, end_date, stage_status)
+SELECT @lck_id, 'Vòng Bảng LCK Mùa Hè', 'GROUP_STAGE', 1, '2026-06-12 17:00:00', '2026-08-10 22:00:00', 'COMPLETED'
+FROM DUAL WHERE @lck_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM stages WHERE tournament_id = @lck_id AND stage_order = 1);
+
+INSERT INTO stages (tournament_id, stage_name, stage_type, stage_order, start_date, end_date, stage_status)
+SELECT @lck_id, 'Playoffs LCK Mùa Hè', 'PLAYOFF', 2, '2026-08-15 17:00:00', '2026-08-25 22:00:00', 'COMPLETED'
+FROM DUAL WHERE @lck_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM stages WHERE tournament_id = @lck_id AND stage_order = 2);
+
+SET @lck_group   := (SELECT stage_id FROM stages WHERE tournament_id = @lck_id AND stage_order = 1 LIMIT 1);
+SET @lck_playoff := (SELECT stage_id FROM stages WHERE tournament_id = @lck_id AND stage_order = 2 LIMIT 1);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @lck_group, 1, 'Tuần 1 - Lượt đi', '2026-06-12 17:00:00', 'COMPLETED'
+FROM DUAL WHERE @lck_group IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @lck_group AND round_number = 1);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @lck_group, 2, 'Tuần 2 - Lượt đi', '2026-06-20 17:00:00', 'COMPLETED'
+FROM DUAL WHERE @lck_group IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @lck_group AND round_number = 2);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @lck_group, 3, 'Tuần 3 - Lượt về', '2026-07-15 17:00:00', 'COMPLETED'
+FROM DUAL WHERE @lck_group IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @lck_group AND round_number = 3);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @lck_playoff, 1, 'Vòng Chung Kết LCK Mùa Hè', '2026-08-20 17:00:00', 'COMPLETED'
+FROM DUAL WHERE @lck_playoff IS NOT NULL AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @lck_playoff AND round_number = 1);
+
+SET @lck_w1 := (SELECT round_id FROM rounds WHERE stage_id = @lck_group AND round_number = 1 LIMIT 1);
+SET @lck_w2 := (SELECT round_id FROM rounds WHERE stage_id = @lck_group AND round_number = 2 LIMIT 1);
+SET @lck_w3 := (SELECT round_id FROM rounds WHERE stage_id = @lck_group AND round_number = 3 LIMIT 1);
+SET @lck_po := (SELECT round_id FROM rounds WHERE stage_id = @lck_playoff AND round_number = 1 LIMIT 1);
+
+-- 10 trận LCK Mùa Hè 2026
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @lck_w1, @t1_id, @blg_id, 'LCK26-W1-M1', '2026-06-12 17:00:00', 'LoL Park, Seoul', 3, 'COMPLETED'
+FROM DUAL WHERE @lck_w1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'LCK26-W1-M1');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @lck_w1, @wbg_id, @los_id, 'LCK26-W1-M2', '2026-06-13 17:00:00', 'LoL Park, Seoul', 3, 'COMPLETED'
+FROM DUAL WHERE @lck_w1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'LCK26-W1-M2');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @lck_w1, @gam_id, @t1_id, 'LCK26-W1-M3', '2026-06-14 17:00:00', 'LoL Park, Seoul', 3, 'COMPLETED'
+FROM DUAL WHERE @lck_w1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'LCK26-W1-M3');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @lck_w2, @blg_id, @wbg_id, 'LCK26-W2-M1', '2026-06-20 17:00:00', 'LoL Park, Seoul', 3, 'COMPLETED'
+FROM DUAL WHERE @lck_w2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'LCK26-W2-M1');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @lck_w2, @los_id, @gam_id, 'LCK26-W2-M2', '2026-06-21 17:00:00', 'LoL Park, Seoul', 3, 'COMPLETED'
+FROM DUAL WHERE @lck_w2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'LCK26-W2-M2');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @lck_w2, @t1_id, @wbg_id, 'LCK26-W2-M3', '2026-06-22 17:00:00', 'LoL Park, Seoul', 3, 'COMPLETED'
+FROM DUAL WHERE @lck_w2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'LCK26-W2-M3');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @lck_w3, @blg_id, @gam_id, 'LCK26-W3-M1', '2026-07-15 17:00:00', 'LoL Park, Seoul', 3, 'COMPLETED'
+FROM DUAL WHERE @lck_w3 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'LCK26-W3-M1');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @lck_w3, @t1_id, @los_id, 'LCK26-W3-M2', '2026-07-16 17:00:00', 'LoL Park, Seoul', 3, 'COMPLETED'
+FROM DUAL WHERE @lck_w3 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'LCK26-W3-M2');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @lck_po, @blg_id, @los_id, 'LCK26-PO-SF', '2026-08-20 17:00:00', 'KSPO Dome, Seoul', 5, 'COMPLETED'
+FROM DUAL WHERE @lck_po IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'LCK26-PO-SF');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @lck_po, @t1_id, @blg_id, 'LCK26-PO-FINAL', '2026-08-25 17:00:00', 'KSPO Dome, Seoul', 5, 'COMPLETED'
+FROM DUAL WHERE @lck_po IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'LCK26-PO-FINAL');
+
+-- 10 kết quả LCK Mùa Hè 2026
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'LCK26-W1-M1' LIMIT 1), 2, 1, @t1_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'Trận khai mạc Mùa Hè kịch tính giữa T1 và BLG'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'LCK26-W1-M1');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'LCK26-W1-M2' LIMIT 1), 2, 0, @wbg_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'WBG kiểm soát nhịp độ trận đấu chặt chẽ trong cả 2 ván'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'LCK26-W1-M2');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'LCK26-W1-M3' LIMIT 1), 1, 2, @t1_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'Gumayusi gánh đội ở ván 3 mang về thắng lợi cho T1'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'LCK26-W1-M3');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'LCK26-W2-M1' LIMIT 1), 2, 1, @blg_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'Knight xuất sắc với Ahri ở ván đấu quyết định'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'LCK26-W2-M1');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'LCK26-W2-M2' LIMIT 1), 2, 1, @los_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'LOS giành chiến thắng đầu tay sau loạt BO3 căng thẳng'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'LCK26-W2-M2');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'LCK26-W2-M3' LIMIT 1), 2, 0, @t1_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'T1 duy trì chuỗi bất bại sau 2 tuần thi đấu'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'LCK26-W2-M3');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'LCK26-W3-M1' LIMIT 1), 2, 0, @blg_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'BLG bứt phá trên bảng xếp hạng giai đoạn lượt về'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'LCK26-W3-M1');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'LCK26-W3-M2' LIMIT 1), 2, 1, @t1_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'Keria mở giao tranh chuẩn xác giúp T1 khép lại vòng bảng'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'LCK26-W3-M2');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'LCK26-PO-SF' LIMIT 1), 3, 1, @blg_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'BLG tiến vào trận Chung kết tại KSPO Dome'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'LCK26-PO-SF');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'LCK26-PO-FINAL' LIMIT 1), 3, 2, @t1_id,
+       'CONFIRMED', @ref_id, @org_id, NOW(), 'Siêu kinh điển 5 ván đấu, T1 bảo vệ thành công ngôi vương'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'LCK26-PO-FINAL');
+
+-- Phân công trọng tài Trần Minh Trọng cho toàn bộ 20 trận mới
+INSERT INTO match_referees (match_id, referee_user_id)
+SELECT m.match_id, @ref_id
+FROM matches m
+WHERE (m.match_code LIKE 'MSI26-%' OR m.match_code LIKE 'LCK26-%')
+  AND NOT EXISTS (
+      SELECT 1 FROM match_referees mr
+      WHERE mr.match_id = m.match_id AND mr.referee_user_id = @ref_id
+  );
