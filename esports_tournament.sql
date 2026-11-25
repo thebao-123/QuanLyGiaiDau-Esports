@@ -864,3 +864,147 @@ SELECT 'Khách tham quan', 'guest@esports.vn',
        '0901000011', 'VIEWER', 'ACTIVE'
 FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'guest@esports.vn');
+
+-- =================================================================
+-- BỔ SUNG THÊM VÒNG ĐẤU, 10 TRẬN ĐẤU VÀ 9 KẾT QUẢ CHO CKTG 2026
+-- =================================================================
+SET @cktg_id := (
+    SELECT tournament_id FROM tournaments
+    WHERE UPPER(tournament_name) = UPPER('CHUNG KẾT THẾ GIỚI LMHT 2026')
+    ORDER BY tournament_id LIMIT 1
+);
+SET @cktg_org_id := COALESCE((SELECT user_id FROM users WHERE role = 'ORGANIZER' LIMIT 1), 2);
+SET @cktg_ref_id := COALESCE((SELECT user_id FROM users WHERE role = 'REFEREE' LIMIT 1), 4);
+
+SET @t1_id  := (SELECT team_id FROM teams WHERE team_tag = 'T1'  LIMIT 1);
+SET @blg_id := (SELECT team_id FROM teams WHERE team_tag = 'BLG' LIMIT 1);
+SET @wbg_id := (SELECT team_id FROM teams WHERE team_tag = 'WBG' LIMIT 1);
+SET @los_id := (SELECT team_id FROM teams WHERE team_tag = 'LOS' LIMIT 1);
+SET @gam_id := (SELECT team_id FROM teams WHERE team_tag = 'GAM' LIMIT 1);
+
+SET @cktg_swiss_id   := (SELECT stage_id FROM stages WHERE tournament_id = @cktg_id AND stage_order = 1 LIMIT 1);
+SET @cktg_playoff_id := (SELECT stage_id FROM stages WHERE tournament_id = @cktg_id AND stage_order = 2 LIMIT 1);
+
+-- 1. Thêm các vòng đấu mới (đúng cột round_number và round_status)
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @cktg_swiss_id, 2, 'Vòng 2 - Swiss', '2026-11-06 19:00:00', 'COMPLETED'
+FROM DUAL WHERE @cktg_swiss_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @cktg_swiss_id AND round_number = 2);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @cktg_swiss_id, 3, 'Vòng 3 - Swiss', '2026-11-10 18:00:00', 'COMPLETED'
+FROM DUAL WHERE @cktg_swiss_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @cktg_swiss_id AND round_number = 3);
+
+INSERT INTO rounds (stage_id, round_number, round_name, scheduled_start, round_status)
+SELECT @cktg_playoff_id, 4, 'Tranh hạng 3', '2026-11-28 19:00:00', 'UPCOMING'
+FROM DUAL WHERE @cktg_playoff_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM rounds WHERE stage_id = @cktg_playoff_id AND round_number = 4);
+
+SET @r_swiss1 := (SELECT round_id FROM rounds WHERE stage_id = @cktg_swiss_id   AND round_number = 1 LIMIT 1);
+SET @r_swiss2 := (SELECT round_id FROM rounds WHERE stage_id = @cktg_swiss_id   AND round_number = 2 LIMIT 1);
+SET @r_swiss3 := (SELECT round_id FROM rounds WHERE stage_id = @cktg_swiss_id   AND round_number = 3 LIMIT 1);
+SET @r_qf     := (SELECT round_id FROM rounds WHERE stage_id = @cktg_playoff_id AND round_number = 1 LIMIT 1);
+SET @r_3rd    := (SELECT round_id FROM rounds WHERE stage_id = @cktg_playoff_id AND round_number = 4 LIMIT 1);
+
+-- 2. Thêm 10 trận đấu mới (9 trận đã hoàn tất + 1 trận Tranh hạng 3 chờ nhập tỷ số)
+-- Vòng 1 - Swiss (Bổ sung trận 3)
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @r_swiss1, @los_id, @blg_id, 'CKTG26-SW1-M3', '2026-11-03 22:00:00', 'O2 Arena, London', 1, 'COMPLETED'
+FROM DUAL WHERE @r_swiss1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'CKTG26-SW1-M3');
+
+-- Vòng 2 - Swiss (3 trận BO1)
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @r_swiss2, @t1_id, @gam_id, 'CKTG26-SW2-M1', '2026-11-06 19:00:00', 'O2 Arena, London', 1, 'COMPLETED'
+FROM DUAL WHERE @r_swiss2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'CKTG26-SW2-M1');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @r_swiss2, @los_id, @wbg_id, 'CKTG26-SW2-M2', '2026-11-06 20:30:00', 'O2 Arena, London', 1, 'COMPLETED'
+FROM DUAL WHERE @r_swiss2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'CKTG26-SW2-M2');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @r_swiss2, @blg_id, @wbg_id, 'CKTG26-SW2-M3', '2026-11-06 22:00:00', 'O2 Arena, London', 1, 'COMPLETED'
+FROM DUAL WHERE @r_swiss2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'CKTG26-SW2-M3');
+
+-- Vòng 3 - Swiss (2 trận BO3 quyết định vé vào Tứ kết)
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @r_swiss3, @t1_id, @los_id, 'CKTG26-SW3-M1', '2026-11-10 18:00:00', 'O2 Arena, London', 3, 'COMPLETED'
+FROM DUAL WHERE @r_swiss3 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'CKTG26-SW3-M1');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @r_swiss3, @gam_id, @blg_id, 'CKTG26-SW3-M2', '2026-11-10 21:00:00', 'O2 Arena, London', 3, 'COMPLETED'
+FROM DUAL WHERE @r_swiss3 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'CKTG26-SW3-M2');
+
+-- Tứ kết (Bổ sung thêm 3 trận BO5 cho đủ 4 cặp Tứ kết)
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @r_qf, @gam_id, @wbg_id, 'CKTG26-QF-M2', '2026-11-15 19:00:00', 'O2 Arena, London', 5, 'COMPLETED'
+FROM DUAL WHERE @r_qf IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'CKTG26-QF-M2');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @r_qf, @blg_id, @gam_id, 'CKTG26-QF-M3', '2026-11-16 19:00:00', 'O2 Arena, London', 5, 'COMPLETED'
+FROM DUAL WHERE @r_qf IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'CKTG26-QF-M3');
+
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @r_qf, @los_id, @wbg_id, 'CKTG26-QF-M4', '2026-11-17 19:00:00', 'O2 Arena, London', 5, 'COMPLETED'
+FROM DUAL WHERE @r_qf IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'CKTG26-QF-M4');
+
+-- Tranh hạng 3 (Trận sắp diễn ra ngày 28/11/2026 - Sẵn sàng)
+INSERT INTO matches (round_id, team1_id, team2_id, match_code, scheduled_time, venue, best_of, match_status)
+SELECT @r_3rd, @gam_id, @los_id, 'CKTG26-3RD-M1', '2026-11-28 19:00:00', 'O2 Arena, London', 5, 'SCHEDULED'
+FROM DUAL WHERE @r_3rd IS NOT NULL AND NOT EXISTS (SELECT 1 FROM matches WHERE match_code = 'CKTG26-3RD-M1');
+
+-- 3. Phân công trọng tài Trần Minh Trọng cho toàn bộ các trận CKTG 2026
+INSERT INTO match_referees (match_id, referee_user_id)
+SELECT m.match_id, @cktg_ref_id
+FROM matches m
+WHERE m.match_code LIKE 'CKTG26-%'
+  AND NOT EXISTS (
+      SELECT 1 FROM match_referees mr
+      WHERE mr.match_id = m.match_id AND mr.referee_user_id = @cktg_ref_id
+  );
+
+-- 4. Thêm 9 kết quả trận đấu đã xác nhận vào bảng match_results (đúng cột team1_score, team2_score, note)
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'CKTG26-SW1-M3' LIMIT 1), 1, 0, @los_id,
+       'CONFIRMED', @cktg_ref_id, @cktg_org_id, NOW(), 'Los Ratones gây bất ngờ lớn với chiến thuật đẩy lẻ của Thebausffs'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'CKTG26-SW1-M3');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'CKTG26-SW2-M1' LIMIT 1), 1, 0, @t1_id,
+       'CONFIRMED', @cktg_ref_id, @cktg_org_id, NOW(), 'Faker tỏa sáng với Orianna giúp T1 vươn lên nhánh 2-0'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'CKTG26-SW2-M1');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'CKTG26-SW2-M2' LIMIT 1), 1, 0, @los_id,
+       'CONFIRMED', @cktg_ref_id, @cktg_org_id, NOW(), 'LOS giữ mạch bất bại tại Vòng Thụy Sĩ sau pha cướp Baron quyết định'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'CKTG26-SW2-M2');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'CKTG26-SW2-M3' LIMIT 1), 1, 0, @blg_id,
+       'CONFIRMED', @cktg_ref_id, @cktg_org_id, NOW(), 'BLG tìm lại phong độ trong trận nội chiến LPL'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'CKTG26-SW2-M3');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'CKTG26-SW3-M1' LIMIT 1), 2, 1, @t1_id,
+       'CONFIRMED', @cktg_ref_id, @cktg_org_id, NOW(), 'T1 lội ngược dòng 2-1 để giành tấm vé đầu tiên vào Tứ kết'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'CKTG26-SW3-M1');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'CKTG26-SW3-M2' LIMIT 1), 2, 1, @gam_id,
+       'CONFIRMED', @cktg_ref_id, @cktg_org_id, NOW(), 'Levi dẫn dắt GAM đánh bại hạt giống số 1 LPL sau 3 ván nghẹt thở'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'CKTG26-SW3-M2');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'CKTG26-QF-M2' LIMIT 1), 3, 2, @gam_id,
+       'CONFIRMED', @cktg_ref_id, @cktg_org_id, NOW(), 'GAM viết tiếp kỳ tích tiến vào Bán kết CKTG 2026 sau 5 ván đấu'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'CKTG26-QF-M2');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'CKTG26-QF-M3' LIMIT 1), 3, 1, @blg_id,
+       'CONFIRMED', @cktg_ref_id, @cktg_org_id, NOW(), 'Bin tỏa sáng ở đường trên đưa BLG ghi tên vào vòng 4 đội mạnh nhất'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'CKTG26-QF-M3');
+
+INSERT INTO match_results (match_id, team1_score, team2_score, winner_team_id, result_status, entered_by, confirmed_by, confirmed_at, note)
+SELECT (SELECT match_id FROM matches WHERE match_code = 'CKTG26-QF-M4' LIMIT 1), 3, 1, @los_id,
+       'CONFIRMED', @cktg_ref_id, @cktg_org_id, NOW(), 'Đại diện châu Âu khuấy đảo sân khấu Tứ kết với thắng lợi 3-1'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM match_results mr JOIN matches m ON mr.match_id = m.match_id WHERE m.match_code = 'CKTG26-QF-M4');
