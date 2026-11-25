@@ -1536,3 +1536,4 @@ WHERE (m.match_code LIKE 'VCT26-%' OR m.match_code LIKE 'VCS27%')
       SELECT 1 FROM match_referees mr
       WHERE mr.match_id = m.match_id AND mr.referee_user_id = @ref_id
   );
+
